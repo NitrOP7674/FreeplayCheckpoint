@@ -327,8 +327,6 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	}
 
 	// Determine how much to rewind / advance time.
-
-	// TODO: use right stick instead / optionally?
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
 		return;
 	}
