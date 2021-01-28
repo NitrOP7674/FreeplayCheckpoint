@@ -11,7 +11,7 @@
 #include <fstream>
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 
-static const float MAX_DODGE_TIME = 1.2;
+static const float MAX_DODGE_TIME = 1.2f;
 
 template<typename T>
 void writePOD(std::ofstream& out, T& t) {

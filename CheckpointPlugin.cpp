@@ -377,7 +377,7 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	if (justDeletedCheckpoint) {
 		loc.X = int(screenSize.X * .70);
 		canvas.SetPosition(loc);
-		canvas.SetColor(255, 255, 255, 220);
+		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
 		canvas.DrawString("Checkpoint deleted!", 5, 5);
 		return;
 	}
@@ -385,6 +385,6 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	canvas.SetColor(0, 0, 0, 100);
 	canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
 	canvas.SetPosition(loc);
-	canvas.SetColor(255, 255, 255, 220);
+	canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
 	canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
 }

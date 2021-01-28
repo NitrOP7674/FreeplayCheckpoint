@@ -1,7 +1,7 @@
 Freeplay Checkpoint Plugin
 9|
 9|Bindings
-9|- Enter Freeplay and click button below to capture currently pressed button
+9|- Enter Freeplay, HOLD button you wish to assign and click desired action button
 8|
 0|        Freeze        |cpt_capture_key cpt_freeze
 7|
