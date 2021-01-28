@@ -73,6 +73,11 @@ void CheckpointPlugin::onLoad()
 	cleanHistory.addOnValueChanged([this](std::string old, CVarWrapper now) { deleteFutureHistory = now.getBoolValue(); });
 	cleanHistory.notify();
 
+	auto debugCV = cvarManager->registerCvar(
+		"cpt_debug", "0", "If set, render debugging info", true, true, 0, true, 1, false);
+	debugCV.addOnValueChanged([this](std::string old, CVarWrapper now) { debug = now.getBoolValue(); });
+	debugCV.notify();
+
 	// Continually call OnPreAsync.
 	gameWrapper->HookEvent("Function PlayerController_TA.Driving.PlayerMove", bind(&CheckpointPlugin::OnPreAsync, this, _1));
 
@@ -274,7 +279,7 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 		return;
 	}
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
-	if (sw.GetCars().Count() == 0 || sw.GetBall().IsNull() || sw.GetGameCar().IsNull()) {
+	if (sw.GetBall().IsNull() || sw.GetGameCar().IsNull()) {
 		return;
 	}
 
@@ -292,6 +297,9 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	static float lastRewindTime = 0.0f;
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = std::min(currentTime - lastRewindTime, 0.03f);
+	if (elapsed < 0) {
+		elapsed = 0.011f;
+	}
 	if (elapsed < 0.01f) {
 		return;
 	}
@@ -369,10 +377,32 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 		return;
 	}
-	if (!rewindMode || (!atCheckpoint && !justDeletedCheckpoint)) {
+	if (!debug && (!rewindMode || (!atCheckpoint && !justDeletedCheckpoint))) {
 		return;
 	}
 	auto screenSize = canvas.GetSize();
+	if (debug) {
+		Vector2 loc = { (int)(screenSize.X * 0.08), (int)(screenSize.Y * 0.08) };
+		float scale = 1.5f;
+		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
+		canvas.SetPosition(loc);
+		canvas.DrawString("rewindMode: " + std::to_string(rewindMode), scale, scale);
+		loc.Y += 20;
+		canvas.SetPosition(loc);
+		canvas.DrawString("atCheckpoint: " + std::to_string(atCheckpoint), scale, scale);
+		loc.Y += 20; 
+		canvas.SetPosition(loc);
+		canvas.DrawString("justDeletedCheckpoint: " + std::to_string(justDeletedCheckpoint), scale, scale);
+		loc.Y += 20; 
+		canvas.SetPosition(loc);
+		canvas.DrawString("justLoadedQuickCheckpoint: " + std::to_string(justLoadedQuickCheckpoint), scale, scale);
+		loc.Y += 20; 
+		canvas.SetPosition(loc);
+		canvas.DrawString("hasQuickCheckpoint: " + std::to_string(hasQuickCheckpoint), scale, scale);
+		if (!rewindMode) {
+			return;
+		}
+	}
 	Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 	if (justDeletedCheckpoint) {
 		loc.X = int(screenSize.X * .70);
@@ -381,10 +411,12 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		canvas.DrawString("Checkpoint deleted!", 5, 5);
 		return;
 	}
-	canvas.SetPosition(loc + Vector2{ 5,5 });
-	canvas.SetColor(0, 0, 0, 100);
-	canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
-	canvas.SetPosition(loc);
-	canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
-	canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
+	if (atCheckpoint) {
+		canvas.SetPosition(loc + Vector2{ 5,5 });
+		canvas.SetColor(0, 0, 0, 100);
+		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
+		canvas.SetPosition(loc);
+		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
+		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
+	}
 }
