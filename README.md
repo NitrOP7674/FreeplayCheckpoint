@@ -3,7 +3,8 @@
 1. Open bakkesmod window (F2 by default)
 2. Click "Plugins"
 3. Find "Freeplay Checkpoint Plugin"
-4. Click "Set Default Button Bindings"
+4. Optionally choose new button bindings.
+5. Click "Apply Bindings"
 
 Alternatively, assign the "cpt" commands as desired in the "Bindings" tab.
 
