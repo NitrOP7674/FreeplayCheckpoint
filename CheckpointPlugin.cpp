@@ -79,7 +79,7 @@ void CheckpointPlugin::onLoad()
 
 	// Enter rewind mode.  TODO: toggle rewind mode instead?
 	cvarManager->registerNotifier("cpt_freeze", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || history.size() == 0 || rewindMode) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
 			return;
 		}
 		latest = history.back();
@@ -90,7 +90,7 @@ void CheckpointPlugin::onLoad()
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
 	// TODO: different button for delete?
 	cvarManager->registerNotifier("cpt_do_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay()) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 			return;
 		}
 		if (!rewindMode) {
@@ -116,7 +116,7 @@ void CheckpointPlugin::onLoad()
 
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || checkpoints.size() == 0) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 			return;
 		}
 		if (!justDeletedCheckpoint) {
@@ -129,7 +129,7 @@ void CheckpointPlugin::onLoad()
 
 	// Go to next checkpoint.
 	cvarManager->registerNotifier("cpt_next_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || checkpoints.size() == 0) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 			return;
 		}
 		curCheckpoint = std::clamp<size_t>(curCheckpoint + 1, 0, checkpoints.size() - 1);
@@ -272,16 +272,16 @@ void CheckpointPlugin::record(ServerWrapper sw)
 		return;
 	}
 	lastRecordTime = currentTime;
-
 	if (dodgeExpiration != 0) {
-		auto c = sw.GetGameCar();
-		// If the above happened or if the player double-jumps or lands,
+		// If the timer expires or if the player double-jumps or gets a reset,
 		// clear the jump timer so we don't take the player's dodge.
-		if (c.GetbDoubleJumped() || /*c.IsOnGround() || c.IsOnWall() ||*/ c.GetNumWheelContacts() == 4) {
-			dodgeExpiration = 0;
-		} else if (currentTime > dodgeExpiration) {
+		auto c = sw.GetGameCar();
+		if (currentTime > dodgeExpiration ||
+			c.GetbDoubleJumped() ||
+			c.GetNumWheelContacts() == 4) {
 			c.SetbJumped(true);
 			c.SetbDoubleJumped(true);
+			dodgeExpiration = 0;
 		}
 	}
 
@@ -293,7 +293,7 @@ void CheckpointPlugin::record(ServerWrapper sw)
 }
 
 void CheckpointPlugin::Render(CanvasWrapper canvas) {
-	if (!gameWrapper->IsInFreeplay()) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 		return;
 	}
 	if (!rewindMode || (!atCheckpoint && !justDeletedCheckpoint)) {
