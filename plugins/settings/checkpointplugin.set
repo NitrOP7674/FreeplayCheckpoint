@@ -18,11 +18,16 @@ Freeplay Checkpoint Plugin
 8|
 0|  Apply Bindings  |cpt_apply_bindings
 7|
-9|(may be necessary if bindings have never been set)
+9|(if bindings have never been set)
+7|
+0| Remove Bindings  |cpt_remove_bindings
+7|
+9|:(
 8|
 9|
 9|
 9|Other options:
 8|
 1| Clean History -- Deletes future history points when resuming.|cpt_clean_history
+1| Debug -- Show debugging state|cpt_debug
 9|
