@@ -1,0 +1,10 @@
+Freeplay Checkpoint Plugin
+9|
+9|       
+7|
+0|Set Default Button Bindings|cpt_default_bindings
+7|
+9|  (only click once!)
+9|
+8|
+1| Clean History -- Deletes future history points when resuming.|cpt_clean_history
