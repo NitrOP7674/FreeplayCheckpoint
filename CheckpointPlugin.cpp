@@ -87,7 +87,7 @@ void CheckpointPlugin::onLoad()
 		dodgeExpiration = 0.0;
 	});
 
-	// Enter rewind mode.  TODO: toggle rewind mode instead?
+	// Enter rewind mode.
 	cvarManager->registerNotifier("cpt_freeze", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
 			return;
