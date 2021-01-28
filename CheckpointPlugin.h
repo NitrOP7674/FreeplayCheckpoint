@@ -19,6 +19,7 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	//Boilerplate
 	virtual void onLoad();
+	void applyBindKeys(std::vector<std::string> params);
 	virtual void onUnload();
 
 	private:
@@ -41,6 +42,7 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	bool deleteFutureHistory = false;
 	
 	void addBind(std::string key, std::string cmd);
+	void removeBind(std::string key, std::string cmd);
 	void OnPreAsync(std::string funcName);
 	void rewind(ServerWrapper sw);
 	void loadCheckpointFile();
