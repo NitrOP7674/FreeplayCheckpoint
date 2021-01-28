@@ -59,6 +59,11 @@ void CheckpointPlugin::saveCheckpointFile() {
 	out.close();
 }
 
+static const std::vector<std::string> KEY_LIST = {
+	"XboxTypeS_A", "XboxTypeS_B", "XboxTypeS_X", "XboxTypeS_Y", "XboxTypeS_RightShoulder", "XboxTypeS_RightTrigger",
+	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
+	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
+
 void CheckpointPlugin::onLoad()
 {
 	loadCheckpointFile();
@@ -137,25 +142,93 @@ void CheckpointPlugin::onLoad()
 	}, "Sets the car to the next checkpoint", PERMISSION_FREEPLAY);
 
 	// Add default bindings.
-	cvarManager->registerNotifier("cpt_default_bindings", [this](std::vector<std::string> command) {
-		addBind("XboxTypeS_RightThumbStick", "cpt_freeze");
-		addBind("XboxTypeS_Back", "cpt_do_checkpoint");
-		addBind("XboxTypeS_DPad_Left", "cpt_prev_checkpoint");
-		addBind("XboxTypeS_DPad_Right", "cpt_next_checkpoint");
-	}, "Adds the default button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
+	cvarManager->registerCvar("cpt_freeze_key", "XboxTypeS_RightThumbStick", "Key to bind cpt_freeze to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_do_checkpoint_key", "XboxTypeS_Back", "Key to bind cpt_do_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_prev_checkpoint_key", "XboxTypeS_DPad_Left", "Key to bind cpt_prev_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
+		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_capture_key", [this](std::vector<std::string> params) {
+		if (params.size() != 2) {
+			cvarManager->log("cpt_capture_key: error: requires exactly 1 param.");
+			return;
+		}
+		std::string command = params.back();
+		auto cvar = cvarManager->getCvar(command + "_key");
+		if (cvar.IsNull()) {
+			cvarManager->log("cpt_capture_key: error: unknown cvar to capture to.");
+			return;
+		}
+		auto oldKey = cvar.getStringValue();
+		removeBind(oldKey, command);
+		for (auto key : KEY_LIST) {
+			if (gameWrapper->IsKeyPressed(gameWrapper->GetFNameIndexByString(key))) {
+				cvar.setValue(key);
+				cvarManager->log("cpt_capture_key: " + command + " = " + key);
+				break;
+			}
+		}
+		applyBindKeys(std::vector<std::string>());
+	}, "Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
 }
 
+void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {
+	addBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
+	addBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
+	addBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
+	addBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
+}
+
 void CheckpointPlugin::addBind(std::string key, std::string cmd) {
 	std::string old = cvarManager->getBindStringForKey(key);
-	old.erase(std::find_if(old.rbegin(), old.rend(), [](int c) {return !std::isspace(c) && c != ';'; }).base(), old.end());
-	old.erase(old.begin(), std::find_if(old.begin(), old.end(), [](int c) {return !std::isspace(c) && c != ';'; }));
-	if (old != "") {
-		old += ';';
+	std::vector<std::string> cmds;
+
+	for (char* token = strtok(const_cast<char*>(old.c_str()), ";");
+	     token != nullptr;
+	     token = strtok(nullptr, ";"))
+	{
+		auto tok = std::string(token);
+		trim(tok);
+		if (tok != "") {
+			cmds.push_back(std::string(tok));
+		}
 	}
-	cvarManager->setBind(key, old + cmd);
+	if (std::find(cmds.begin(), cmds.end(), cmd) == cmds.end()) {
+		cmds.push_back(trim(cmd));
+	}
+	std::stringstream s;
+	std::copy(cmds.begin(), cmds.end() - 1, std::ostream_iterator<std::string>(s, ";"));
+	s << cmds.back();
+	cvarManager->setBind(key, s.str());
+}
+
+void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
+	std::string old = cvarManager->getBindStringForKey(key);
+	std::vector<std::string> cmds;
+	cvarManager->log("removing " + cmd + " from " + key);
+	for (char* token = strtok(const_cast<char*>(old.c_str()), ";");
+		token != nullptr;
+		token = strtok(nullptr, ";"))
+	{
+		auto tok = std::string(token);
+		trim(tok);
+		if (tok != "" && tok != cmd) {
+			cvarManager->log("pushing " + tok);
+			cmds.push_back(std::string(tok));
+		}
+	}
+	if (cmds.size() == 0) {
+		cvarManager->executeCommand("unbind " + key);
+		return;
+	}
+	std::stringstream s;
+	std::copy(cmds.begin(), cmds.end() - 1, std::ostream_iterator<std::string>(s, ";"));
+	s << cmds.back();
+	cvarManager->log("setting " + key + " to " + s.str());
+	cvarManager->setBind(key, s.str());
 }
 
 void CheckpointPlugin::onUnload() {
@@ -315,4 +388,3 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	canvas.SetColor(255, 255, 255, 220);
 	canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
 }
-

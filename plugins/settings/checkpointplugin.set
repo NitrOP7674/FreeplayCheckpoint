@@ -1,10 +1,28 @@
 Freeplay Checkpoint Plugin
 9|
-9|       
+9|Bindings
+9|- Enter Freeplay and click button below to capture currently pressed button
+8|
+0|        Freeze        |cpt_capture_key cpt_freeze
 7|
-0|Set Default Button Bindings|cpt_default_bindings
+9| [ $cpt_freeze_key$ ]
+0|     Checkpoint    |cpt_capture_key cpt_do_checkpoint
 7|
-9|  (only click once!)
+9| [ $cpt_do_checkpoint_key$ ]
+0|Prev. Checkpoint|cpt_capture_key cpt_prev_checkpoint
+7|
+9| [ $cpt_prev_checkpoint_key$ ]
+0|Next. Checkpoint|cpt_capture_key cpt_next_checkpoint
+7|
+9| [ $cpt_next_checkpoint_key$ ]
+8|
+0|  Apply Bindings  |cpt_apply_bindings
+7|
+9|(may be necessary if bindings have never been set)
+8|
 9|
+9|
+9|Other options:
 8|
 1| Clean History -- Deletes future history points when resuming.|cpt_clean_history
+9|
