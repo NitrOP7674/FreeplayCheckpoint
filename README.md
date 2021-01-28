@@ -18,3 +18,8 @@ Alternatively, assign the "cpt" commands as desired in the "Bindings" tab.
 6. Press Back again to return to that checkpoint.
 7. Press Back on a currently frozen checkpoint to delete it.
 8. Press left/right on the dpad to navigate between multiple checkpoints.
+
+**Uninstalling:**
+
+To conveniently remove bindings from buttons, click the "Remove Bindings" button
+in the settings pane.
