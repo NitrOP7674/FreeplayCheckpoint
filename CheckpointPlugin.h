@@ -35,6 +35,7 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	float dodgeExpiration = 0;
 	bool hasQuickCheckpoint = false;
 	bool justLoadedQuickCheckpoint = false;
+	bool debug = false;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
 
