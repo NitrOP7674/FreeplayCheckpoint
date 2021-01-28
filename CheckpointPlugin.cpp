@@ -151,6 +151,8 @@ void CheckpointPlugin::onLoad()
 	cvarManager->registerCvar("cpt_do_checkpoint_key", "XboxTypeS_Back", "Key to bind cpt_do_checkpoint to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_prev_checkpoint_key", "XboxTypeS_DPad_Left", "Key to bind cpt_prev_checkpoint to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerNotifier("cpt_remove_bindings", bind(&CheckpointPlugin::removeBindKeys, this, _1),
+		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
 		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_capture_key", [this](std::vector<std::string> params) {
@@ -178,6 +180,13 @@ void CheckpointPlugin::onLoad()
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
+}
+
+void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
+	removeBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
+	removeBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
+	removeBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
+	removeBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
 }
 
 void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {

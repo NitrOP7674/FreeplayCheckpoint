@@ -19,6 +19,7 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	//Boilerplate
 	virtual void onLoad();
+	void removeBindKeys(std::vector<std::string> params);
 	void applyBindKeys(std::vector<std::string> params);
 	virtual void onUnload();
 
