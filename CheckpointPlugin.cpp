@@ -64,6 +64,12 @@ static const std::vector<std::string> KEY_LIST = {
 	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
 	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
 
+void CheckpointPlugin::log(string s) {
+	if (debug) {
+		cvarManager->log(s);
+	}
+}
+
 void CheckpointPlugin::onLoad()
 {
 	loadCheckpointFile();
@@ -111,7 +117,7 @@ void CheckpointPlugin::onLoad()
 		}
 		hasQuickCheckpoint = false;
 		if (atCheckpoint) { // Delete the current checkpoint we are at.
-			cvarManager->log("at cpt; erasing: " + std::to_string(curCheckpoint));
+			log("at cpt; erasing: " + std::to_string(curCheckpoint));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
 			atCheckpoint = false;
@@ -119,7 +125,7 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		// Add a new checkpoint here.
-		cvarManager->log("adding checkpoint " + std::to_string(checkpoints.size()));
+		log("adding checkpoint " + std::to_string(checkpoints.size()));
 		checkpoints.push_back(latest);
 		curCheckpoint = checkpoints.size() - 1;
 		atCheckpoint = true;
@@ -173,7 +179,7 @@ void CheckpointPlugin::onLoad()
 		for (auto key : KEY_LIST) {
 			if (gameWrapper->IsKeyPressed(gameWrapper->GetFNameIndexByString(key))) {
 				cvar.setValue(key);
-				cvarManager->log("cpt_capture_key: " + command + " = " + key);
+				log("cpt_capture_key: " + command + " = " + key);
 				break;
 			}
 		}
@@ -204,7 +210,7 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
 	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
 	ballSpd = random(-ballSpd, ballSpd);
-	int totVar = abs(carDir) + abs(carSpd) + abs(ballDir) + abs(ballSpd);
+	float totVar = abs(carDir) + abs(carSpd) + abs(ballDir) + abs(ballSpd);
 	if (totVar < 1) {
 		return s;
 	}
@@ -216,10 +222,12 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 		ballDir *= scale;
 		ballSpd *= scale;
 	}
-	cvarManager->log("applying variance: ball(" +
-		std::to_string(ballDir) + "," + std::to_string(ballSpd) + "); car(" +
-		std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
-		std::to_string(totVar));
+	if (debug) {
+		log("applying variance: ball(" +
+			std::to_string(ballDir) + "," + std::to_string(ballSpd) + "); car(" +
+			std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
+			std::to_string(totVar));
+	}
 	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd/100.0));
 	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd/100.0));
 	return o;
@@ -299,7 +307,7 @@ void CheckpointPlugin::addBind(std::string key, std::string cmd) {
 void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
 	std::string old = cvarManager->getBindStringForKey(key);
 	std::vector<std::string> cmds;
-	cvarManager->log("removing " + cmd + " from " + key);
+	log("removing " + cmd + " from " + key);
 	for (char* token = strtok(const_cast<char*>(old.c_str()), ";");
 		token != nullptr;
 		token = strtok(nullptr, ";"))
@@ -307,7 +315,7 @@ void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
 		auto tok = std::string(token);
 		trim(tok);
 		if (tok != "" && tok != cmd) {
-			cvarManager->log("pushing " + tok);
+			log("pushing " + tok);
 			cmds.push_back(std::string(tok));
 		}
 	}
@@ -318,7 +326,7 @@ void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
 	std::stringstream s;
 	std::copy(cmds.begin(), cmds.end() - 1, std::ostream_iterator<std::string>(s, ";"));
 	s << cmds.back();
-	cvarManager->log("setting " + key + " to " + s.str());
+	log("setting " + key + " to " + s.str());
 	cvarManager->setBind(key, s.str());
 }
 
@@ -328,18 +336,18 @@ void CheckpointPlugin::onUnload() {
 
 void CheckpointPlugin::loadLatestCheckpoint() {
 	if (hasQuickCheckpoint) {
-		cvarManager->log("loading quick checkpoint");
+		log("loading quick checkpoint");
 		loadGameState(quickCheckpoint);
 		hasQuickCheckpoint = true;
 		justLoadedQuickCheckpoint = true;
 		return;
 	}
 	if (checkpoints.size() > 0) {
-		cvarManager->log("loading checkpoint " + std::to_string(curCheckpoint));
+		log("loading checkpoint " + std::to_string(curCheckpoint));
 		loadCurCheckpoint();
 		return;
 	}
-	cvarManager->log("no checkpoint to load");
+	log("no checkpoint to load");
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {
@@ -399,12 +407,12 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	// See if we should exit rewind mode due to input.
 	if ((abs(ci.Throttle) > 0.1 || abs(ci.Roll) > 0.1 || ci.Handbrake || ci.Jump || ci.ActivateBoost || ci.HoldingBoost) ||
 		((atCheckpoint || justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05)) {
-		cvarManager->log("resuming...");
+		log("resuming...");
 		rewindMode = false;
 		lastRecordTime = currentTime;
 		dodgeExpiration = (latest.hasDodge && latest.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.lastJumped) : 0;
 		if (!atCheckpoint) {
-			cvarManager->log("quick checkpoint taken");
+			log("quick checkpoint taken");
 			hasQuickCheckpoint = true;
 			quickCheckpoint = latest;
 			if (deleteFutureHistory) {
