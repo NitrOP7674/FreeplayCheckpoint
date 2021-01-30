@@ -8,7 +8,6 @@
 
 #include "pch.h"
 #include "CheckpointPlugin.h"
-#include "utils/parser.h"
 
 #include "bakkesmod/wrappers/GameEvent/TutorialWrapper.h"
 #include "bakkesmod/wrappers/GameObject/CarComponent/BoostWrapper.h"
@@ -58,11 +57,6 @@ void CheckpointPlugin::saveCheckpointFile() {
 	}
 	out.close();
 }
-
-static const std::vector<std::string> KEY_LIST = {
-	"XboxTypeS_A", "XboxTypeS_B", "XboxTypeS_X", "XboxTypeS_Y", "XboxTypeS_RightShoulder", "XboxTypeS_RightTrigger",
-	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
-	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
 
 void CheckpointPlugin::log(std::string s) {
 	if (debug) {
@@ -163,28 +157,8 @@ void CheckpointPlugin::onLoad()
 		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
 		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
-	cvarManager->registerNotifier("cpt_capture_key", [this](std::vector<std::string> params) {
-		if (params.size() != 2) {
-			cvarManager->log("cpt_capture_key: error: requires exactly 1 param.");
-			return;
-		}
-		std::string command = params.back();
-		auto cvar = cvarManager->getCvar(command + "_key");
-		if (cvar.IsNull()) {
-			cvarManager->log("cpt_capture_key: error: unknown cvar to capture to.");
-			return;
-		}
-		auto oldKey = cvar.getStringValue();
-		removeBind(oldKey, command);
-		for (auto key : KEY_LIST) {
-			if (gameWrapper->IsKeyPressed(gameWrapper->GetFNameIndexByString(key))) {
-				cvar.setValue(key);
-				log("cpt_capture_key: " + command + " = " + key);
-				break;
-			}
-		}
-		applyBindKeys(std::vector<std::string>());
-	}, "Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_capture_key", bind(&CheckpointPlugin::captureBindKey, this, _1),
+		"Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
@@ -196,138 +170,6 @@ void CheckpointPlugin::registerVarianceCVars() {
 	cvarManager->registerCvar("cpt_variance_ball_dir", "0", "If set, randomly vary ball's direction when resuming", true, true, 0, true, 30, true);
 	cvarManager->registerCvar("cpt_variance_ball_spd", "0", "If set, randomly vary ball's speed when resuming", true, true, 0, true, 50, true);
 	cvarManager->registerCvar("cpt_variance_tot", "0", "Total variance applied to all factors (range)", true, true, 0, true, 50, true);
-}
-
-Vector deflect(Vector velocity, float dir, float speed);
-GameState CheckpointPlugin::applyVariance(GameState& s) {
-	int maxVar = cvarManager->getCvar("cpt_variance_tot").getIntValue();
-	if (maxVar == 0) {
-		return s;
-	}
-	float carDir = random(.0f, cvarManager->getCvar("cpt_variance_car_dir").getFloatValue());
-	float carSpd = cvarManager->getCvar("cpt_variance_car_spd").getFloatValue();
-	carSpd = random(-carSpd, carSpd);
-	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
-	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
-	ballSpd = random(-ballSpd, ballSpd);
-	float totVar = abs(carDir) + abs(carSpd) + abs(ballDir) + abs(ballSpd);
-	if (totVar < 1) {
-		return s;
-	}
-	GameState o(s);
-	if (totVar > maxVar) {
-		float scale = maxVar / totVar;
-		carDir *= scale;
-		carSpd *= scale;
-		ballDir *= scale;
-		ballSpd *= scale;
-	}
-	if (debug) {
-		log("applying variance: ball(" +
-			std::to_string(ballDir) + "," + std::to_string(ballSpd) + "); car(" +
-			std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
-			std::to_string(totVar));
-	}
-	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd/100.0f));
-	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd/100.0f));
-	return o;
-}
-
-// Rotator uses ints instead of floats.  Floats are better.
-struct Rot { float Pitch, Yaw, Roll; };
-
-Rot VectorToRot(Vector vVector) {
-	Rot rRotation;
-	rRotation.Yaw = atan2(vVector.Y, vVector.X) * CONST_RadToUnrRot;
-	rRotation.Pitch = atan2(vVector.Z, sqrtf(vVector.X * vVector.X + vVector.Y * vVector.Y)) * CONST_RadToUnrRot;
-	rRotation.Roll = 0;
-	return rRotation;
-}
-
-Quat RotToQuat(Rot rot) {
-	float rotatorToRadian = ((CONST_PI_F / 180.f) * .5f) / CONST_DegToUnrRot;
-	float sinPitch = sinf(rot.Pitch * rotatorToRadian);
-	float cosPitch = cosf(rot.Pitch * rotatorToRadian);
-	float sinYaw = sinf(rot.Yaw * rotatorToRadian);
-	float cosYaw = cosf(rot.Yaw * rotatorToRadian);
-	float sinRoll = sinf(rot.Roll * rotatorToRadian);
-	float cosRoll = cosf(rot.Roll * rotatorToRadian);
-	Quat convertedQuat;
-	convertedQuat.X = (cosRoll * sinPitch * sinYaw) - (sinRoll * cosPitch * cosYaw);
-	convertedQuat.Y = (-cosRoll * sinPitch * cosYaw) - (sinRoll * cosPitch * sinYaw);
-	convertedQuat.Z = (cosRoll * cosPitch * sinYaw) - (sinRoll * sinPitch * cosYaw);
-	convertedQuat.W = (cosRoll * cosPitch * cosYaw) + (sinRoll * sinPitch * sinYaw);
-	return convertedQuat;
-}
-
-Vector deflect(Vector velocity, float dir, float speed) {
-	Quat velQ = RotToQuat(VectorToRot(velocity));
-	Quat pitchQ = RotToQuat({ dir * CONST_DegToUnrRot, 0, 0 });  // Deflect dir degrees
-	Quat rollQ = RotToQuat({ 0, 0, random(-32768.0f, 32764.0f) }); // Random direction
-	return RotateVectorWithQuat(RotateVectorWithQuat(RotateVectorWithQuat({ velocity.magnitude() * speed, 0, 0 }, pitchQ), rollQ), velQ);
-}
-
-void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
-	removeBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
-	removeBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
-	removeBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
-	removeBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
-}
-
-void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {
-	addBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
-	addBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
-	addBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
-	addBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
-}
-
-void CheckpointPlugin::addBind(std::string key, std::string cmd) {
-	std::string old = cvarManager->getBindStringForKey(key);
-	std::vector<std::string> cmds;
-
-	for (char* token = strtok(const_cast<char*>(old.c_str()), ";");
-	     token != nullptr;
-	     token = strtok(nullptr, ";"))
-	{
-		auto tok = std::string(token);
-		trim(tok);
-		if (tok != "") {
-			cmds.push_back(std::string(tok));
-		}
-	}
-	if (std::find(cmds.begin(), cmds.end(), cmd) == cmds.end()) {
-		cmds.push_back(trim(cmd));
-	}
-	std::stringstream s;
-	std::copy(cmds.begin(), cmds.end() - 1, std::ostream_iterator<std::string>(s, ";"));
-	s << cmds.back();
-	cvarManager->setBind(key, s.str());
-}
-
-void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
-	std::string old = cvarManager->getBindStringForKey(key);
-	std::vector<std::string> cmds;
-	log("removing " + cmd + " from " + key);
-	for (char* token = strtok(const_cast<char*>(old.c_str()), ";");
-		token != nullptr;
-		token = strtok(nullptr, ";"))
-	{
-		auto tok = std::string(token);
-		trim(tok);
-		if (tok != "" && tok != cmd) {
-			log("pushing " + tok);
-			cmds.push_back(std::string(tok));
-		}
-	}
-	if (cmds.size() == 0) {
-		cvarManager->executeCommand("unbind " + key);
-		return;
-	}
-	std::stringstream s;
-	std::copy(cmds.begin(), cmds.end() - 1, std::ostream_iterator<std::string>(s, ";"));
-	s << cmds.back();
-	log("setting " + key + " to " + s.str());
-	cvarManager->setBind(key, s.str());
 }
 
 void CheckpointPlugin::onUnload() {

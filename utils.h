@@ -22,22 +22,22 @@ template<typename T>
 void readPOD(std::ifstream& in, T& t) {
 	in.read(reinterpret_cast<char*>(&t), sizeof(T));
 }
-void readVec(std::ifstream& in, Vector& v) {
+static inline void readVec(std::ifstream& in, Vector& v) {
 	readPOD(in, v.X);
 	readPOD(in, v.Y);
 	readPOD(in, v.Z);
 }
-void writeVec(std::ofstream& out, Vector& v) {
+static inline void writeVec(std::ofstream& out, Vector& v) {
 	writePOD(out, v.X);
 	writePOD(out, v.Y);
 	writePOD(out, v.Z);
 }
-void readRot(std::ifstream& in, Rotator& r) {
+static inline void readRot(std::ifstream& in, Rotator& r) {
 	readPOD(in, r.Pitch);
 	readPOD(in, r.Yaw);
 	readPOD(in, r.Roll);
 }
-void writeRot(std::ofstream& out, Rotator& r) {
+static inline void writeRot(std::ofstream& out, Rotator& r) {
 	writePOD(out, r.Pitch);
 	writePOD(out, r.Yaw);
 	writePOD(out, r.Roll);
