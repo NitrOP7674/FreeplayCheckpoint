@@ -189,7 +189,7 @@ void CheckpointPlugin::registerVarianceCVars() {
 	cvarManager->registerCvar("cpt_variance_car_spd", "0", "If set, randomly vary car's speed when resuming", true, true, 0, true, 50, true);
 	cvarManager->registerCvar("cpt_variance_ball_dir", "0", "If set, randomly vary ball's direction when resuming", true, true, 0, true, 30, true);
 	cvarManager->registerCvar("cpt_variance_ball_spd", "0", "If set, randomly vary ball's speed when resuming", true, true, 0, true, 50, true);
-	cvarManager->registerCvar("cpt_variance_tot", "(0,0)", "Total variance applied to all factors (range)", true, true, 0, true, 50, true);
+	cvarManager->registerCvar("cpt_variance_tot", "0", "Total variance applied to all factors (range)", true, true, 0, true, 50, true);
 }
 
 Vector deflect(Vector velocity, float dir, float speed);
