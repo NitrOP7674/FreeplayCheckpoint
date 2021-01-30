@@ -23,3 +23,7 @@ Alternatively, assign the "cpt" commands as desired in the "Bindings" tab.
 
 To conveniently remove bindings from buttons, click the "Remove Bindings" button
 in the settings pane.
+
+**Contact:**
+
+Feel free to submit features or bug requests on Github, or contact me on Discord at NitroP#7674.
