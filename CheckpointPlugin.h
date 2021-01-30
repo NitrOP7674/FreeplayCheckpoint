@@ -39,6 +39,7 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	bool debug = false;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
+	float holdingFor = 0;
 
 	// Settings:
 	bool deleteFutureHistory = false;

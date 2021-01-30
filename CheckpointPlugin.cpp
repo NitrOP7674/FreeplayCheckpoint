@@ -228,8 +228,8 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 			std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
 			std::to_string(totVar));
 	}
-	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd/100.0));
-	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd/100.0));
+	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd/100.0f));
+	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd/100.0f));
 	return o;
 }
 
@@ -349,6 +349,7 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 	}
 	log("no checkpoint to load");
 	virtualTimeOffset = 0;
+	holdingFor = 0;
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {
@@ -361,6 +362,7 @@ void CheckpointPlugin::loadGameState(GameState &state) {
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
 	state.apply(sw);
 	virtualTimeOffset = 0;
+	holdingFor = 0;
 	rewindMode = true;
 	atCheckpoint = false;
 	hasQuickCheckpoint = false;
@@ -398,7 +400,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = std::min(currentTime - lastRewindTime, 0.03f);
 	if (elapsed < 0) {
-		elapsed = 0.011f;
+		elapsed = 0.01f;
 	}
 	if (elapsed < 0.01f) {
 		return;
@@ -430,16 +432,26 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
 		return;
 	}
+	float factor = 2;
+	if (ci.Steer < -.95 && holdingFor <= 0) {
+		holdingFor -= elapsed;
+	} else if (ci.Steer > .95 && holdingFor >= 0) {
+		holdingFor += elapsed;
+	} else {
+		holdingFor = 0;
+	}
+	if (abs(holdingFor) > 2 && factor < 5) {
+		factor += elapsed * 2;
+	}
 
 	// How much (in seconds) to move "current" (positive or negative)
-	float deltaElapsed = 2 * elapsed * ci.Steer; // full left = 2 seconds/second
+	float deltaElapsed = factor * elapsed * ci.Steer; // full left = 2-5 seconds/second
 
 	virtualTimeOffset = std::clamp(
 		virtualTimeOffset + deltaElapsed, -snapshotInterval * history.size(), .0f);
 	size_t current = std::clamp<size_t>(
-		history.size() - 1 + size_t(ceil(virtualTimeOffset / snapshotInterval)),
+		history.size() + size_t(ceil(virtualTimeOffset / snapshotInterval)),
 		0, history.size() - 1);
-
 	latest = history.at(current);
 }
 
@@ -471,6 +483,13 @@ void CheckpointPlugin::record(ServerWrapper sw)
 	history.emplace_back(sw);
 }
 
+void show(CanvasWrapper canvas, Vector2 *loc, std::string s) {
+	static const float scale = 1.5f;
+	canvas.SetPosition(*loc);
+	canvas.DrawString(s, scale, scale);
+	loc->Y += 20;
+}
+
 void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 		return;
@@ -480,23 +499,18 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	}
 	auto screenSize = canvas.GetSize();
 	if (debug) {
-		Vector2 loc = { (int)(screenSize.X * 0.08), (int)(screenSize.Y * 0.08) };
-		float scale = 1.5f;
 		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
-		canvas.SetPosition(loc);
-		canvas.DrawString("rewindMode: " + std::to_string(rewindMode), scale, scale);
-		loc.Y += 20;
-		canvas.SetPosition(loc);
-		canvas.DrawString("atCheckpoint: " + std::to_string(atCheckpoint), scale, scale);
-		loc.Y += 20; 
-		canvas.SetPosition(loc);
-		canvas.DrawString("justDeletedCheckpoint: " + std::to_string(justDeletedCheckpoint), scale, scale);
-		loc.Y += 20; 
-		canvas.SetPosition(loc);
-		canvas.DrawString("justLoadedQuickCheckpoint: " + std::to_string(justLoadedQuickCheckpoint), scale, scale);
-		loc.Y += 20; 
-		canvas.SetPosition(loc);
-		canvas.DrawString("hasQuickCheckpoint: " + std::to_string(hasQuickCheckpoint), scale, scale);
+		Vector2 loc = { (int)(screenSize.X * 0.08), (int)(screenSize.Y * 0.08) };
+		show(canvas, &loc, "rewindMode: " + std::to_string(rewindMode));
+		show(canvas, &loc, "atCheckpoint: " + std::to_string(atCheckpoint));
+		show(canvas, &loc, "justDeletedCheckpoint: " + std::to_string(justDeletedCheckpoint));
+		show(canvas, &loc, "justLoadedQuickCheckpoint: " + std::to_string(justLoadedQuickCheckpoint));
+		show(canvas, &loc, "hasQuickCheckpoint: " + std::to_string(hasQuickCheckpoint));
+		show(canvas, &loc, "virtualTimeOffset: " + std::to_string(virtualTimeOffset));
+		size_t current = std::clamp<size_t>(
+			history.size() + size_t(ceil(virtualTimeOffset / snapshotInterval)),
+			0, history.size() - 1);
+		show(canvas, &loc, "current: " + std::to_string(current));
 		if (!rewindMode) {
 			return;
 		}
