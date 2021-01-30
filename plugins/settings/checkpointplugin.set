@@ -1,7 +1,5 @@
 Freeplay Checkpoint Plugin
-9|
-9|Bindings
-9|- Enter Freeplay, HOLD button you wish to assign and click desired action button
+9|Bindings - Enter Freeplay, HOLD button you wish to assign and click desired action button
 8|
 0|        Freeze        |cpt_capture_key cpt_freeze
 7|
@@ -24,6 +22,14 @@ Freeplay Checkpoint Plugin
 7|
 9|:(
 8|
+9|
+9|Variance - applied when leaving rewind mode
+8|
+5|Car Direction (degrees)|cpt_variance_car_dir|0|30
+5|Car Speed (percent)|cpt_variance_car_spd|0|50
+5|Ball Direction (degrees)|cpt_variance_ball_dir|0|30
+5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
+5|Max. Total Variance|cpt_variance_tot|0|50
 9|
 9|
 9|Other options:

@@ -46,6 +46,8 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);
 	void OnPreAsync(std::string funcName);
+	void registerVarianceCVars();
+	GameState applyVariance(GameState& s);
 	void rewind(ServerWrapper sw);
 	void loadCheckpointFile();
 	void saveCheckpointFile();
