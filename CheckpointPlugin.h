@@ -56,6 +56,6 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	void loadLatestCheckpoint();
 	void loadCurCheckpoint();
 	void loadGameState(GameState& state);
-	void log(string s);
+	void log(std::string s);
 };
 

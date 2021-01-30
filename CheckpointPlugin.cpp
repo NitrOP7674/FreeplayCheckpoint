@@ -64,7 +64,7 @@ static const std::vector<std::string> KEY_LIST = {
 	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
 	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
 
-void CheckpointPlugin::log(string s) {
+void CheckpointPlugin::log(std::string s) {
 	if (debug) {
 		cvarManager->log(s);
 	}
