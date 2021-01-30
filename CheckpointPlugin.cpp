@@ -80,7 +80,7 @@ void CheckpointPlugin::onLoad()
 	cleanHistory.notify();
 
 	auto debugCV = cvarManager->registerCvar(
-		"cpt_debug", "0", "If set, render debugging info", true, true, 0, true, 1, false);
+		"cpt_debug", "0", "If set, render debugging info", true, true, 0, true, 1, true);
 	debugCV.addOnValueChanged([this](std::string old, CVarWrapper now) { debug = now.getBoolValue(); });
 	debugCV.notify();
 
@@ -441,7 +441,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 		holdingFor = 0;
 	}
 	if (abs(holdingFor) > 2 && factor < 5) {
-		factor += elapsed * 2;
+		factor += (abs(holdingFor)-2) * 2;
 	}
 
 	// How much (in seconds) to move "current" (positive or negative)
