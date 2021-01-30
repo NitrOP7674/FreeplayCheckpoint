@@ -10,6 +10,7 @@
 
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginwindow.h"
+#include "utils/parser.h"
 
 #include "utils.h"
 #include "version.h"
@@ -19,6 +20,7 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	//Boilerplate
 	virtual void onLoad();
+	void captureBindKey(std::vector<std::string> params);
 	void removeBindKeys(std::vector<std::string> params);
 	void applyBindKeys(std::vector<std::string> params);
 	virtual void onUnload();
