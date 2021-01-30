@@ -78,6 +78,8 @@ void CheckpointPlugin::onLoad()
 	debugCV.addOnValueChanged([this](std::string old, CVarWrapper now) { debug = now.getBoolValue(); });
 	debugCV.notify();
 
+	registerVarianceCVars();
+
 	// Continually call OnPreAsync.
 	gameWrapper->HookEvent("Function PlayerController_TA.Driving.PlayerMove", bind(&CheckpointPlugin::OnPreAsync, this, _1));
 
@@ -180,6 +182,81 @@ void CheckpointPlugin::onLoad()
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
+}
+
+void CheckpointPlugin::registerVarianceCVars() {
+	cvarManager->registerCvar("cpt_variance_car_dir", "0", "If set, randomly vary car's direction when resuming", true, true, 0, true, 30, true);
+	cvarManager->registerCvar("cpt_variance_car_spd", "0", "If set, randomly vary car's speed when resuming", true, true, 0, true, 50, true);
+	cvarManager->registerCvar("cpt_variance_ball_dir", "0", "If set, randomly vary ball's direction when resuming", true, true, 0, true, 30, true);
+	cvarManager->registerCvar("cpt_variance_ball_spd", "0", "If set, randomly vary ball's speed when resuming", true, true, 0, true, 50, true);
+	cvarManager->registerCvar("cpt_variance_tot", "0", "Total variance applied to all factors (range)", true, true, 0, true, 50, true);
+}
+
+Vector deflect(Vector velocity, float dir, float speed);
+GameState CheckpointPlugin::applyVariance(GameState& s) {
+	int maxVar = cvarManager->getCvar("cpt_variance_tot").getIntValue();
+	if (maxVar == 0) {
+		return s;
+	}
+	float carDir = random(.0f, cvarManager->getCvar("cpt_variance_car_dir").getFloatValue());
+	float carSpd = cvarManager->getCvar("cpt_variance_car_spd").getFloatValue();
+	carSpd = random(-carSpd, carSpd);
+	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
+	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
+	ballSpd = random(-ballSpd, ballSpd);
+	int totVar = abs(carDir) + abs(carSpd) + abs(ballDir) + abs(ballSpd);
+	if (totVar < 1) {
+		return s;
+	}
+	GameState o(s);
+	if (totVar > maxVar) {
+		float scale = maxVar / totVar;
+		carDir *= scale;
+		carSpd *= scale;
+		ballDir *= scale;
+		ballSpd *= scale;
+	}
+	cvarManager->log("applying variance: ball(" +
+		std::to_string(ballDir) + "," + std::to_string(ballSpd) + "); car(" +
+		std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
+		std::to_string(totVar));
+	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd/100.0));
+	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd/100.0));
+	return o;
+}
+
+// Rotator uses ints instead of floats.  Floats are better.
+struct Rot { float Pitch, Yaw, Roll; };
+
+Rot VectorToRot(Vector vVector) {
+	Rot rRotation;
+	rRotation.Yaw = atan2(vVector.Y, vVector.X) * CONST_RadToUnrRot;
+	rRotation.Pitch = atan2(vVector.Z, sqrtf(vVector.X * vVector.X + vVector.Y * vVector.Y)) * CONST_RadToUnrRot;
+	rRotation.Roll = 0;
+	return rRotation;
+}
+
+Quat RotToQuat(Rot rot) {
+	float rotatorToRadian = ((CONST_PI_F / 180.f) * .5f) / CONST_DegToUnrRot;
+	float sinPitch = sinf(rot.Pitch * rotatorToRadian);
+	float cosPitch = cosf(rot.Pitch * rotatorToRadian);
+	float sinYaw = sinf(rot.Yaw * rotatorToRadian);
+	float cosYaw = cosf(rot.Yaw * rotatorToRadian);
+	float sinRoll = sinf(rot.Roll * rotatorToRadian);
+	float cosRoll = cosf(rot.Roll * rotatorToRadian);
+	Quat convertedQuat;
+	convertedQuat.X = (cosRoll * sinPitch * sinYaw) - (sinRoll * cosPitch * cosYaw);
+	convertedQuat.Y = (-cosRoll * sinPitch * cosYaw) - (sinRoll * cosPitch * sinYaw);
+	convertedQuat.Z = (cosRoll * cosPitch * sinYaw) - (sinRoll * sinPitch * cosYaw);
+	convertedQuat.W = (cosRoll * cosPitch * cosYaw) + (sinRoll * sinPitch * sinYaw);
+	return convertedQuat;
+}
+
+Vector deflect(Vector velocity, float dir, float speed) {
+	Quat velQ = RotToQuat(VectorToRot(velocity));
+	Quat pitchQ = RotToQuat({ dir * CONST_DegToUnrRot, 0, 0 });  // Deflect dir degrees
+	Quat rollQ = RotToQuat({ 0, 0, random(-32768.0f, 32764.0f) }); // Random direction
+	return RotateVectorWithQuat(RotateVectorWithQuat(RotateVectorWithQuat({ velocity.magnitude() * speed, 0, 0 }, pitchQ), rollQ), velQ);
 }
 
 void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
@@ -294,7 +371,12 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 
 	if (rewindMode) {
 		rewind(sw);
-		latest.apply(sw);
+		if (rewindMode) {
+			latest.apply(sw);
+		} else {
+			// Exited rewind mode.
+			applyVariance(latest).apply(sw);
+		}
 	} else {
 		record(sw);
 	}
