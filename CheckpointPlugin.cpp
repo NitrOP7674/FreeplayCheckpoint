@@ -272,16 +272,25 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	} else {
 		holdingFor = 0;
 	}
-	float factor = std::clamp((abs(holdingFor)-1) * 2, 2.0f, 5.0f);
+	float factor = std::clamp(abs(holdingFor) * 2, 1.0f, 5.0f);
 
 	// How much (in seconds) to move "current" (positive or negative)
 	float deltaElapsed = factor * elapsed * ci.Steer; // full left = 2-5 seconds/second
 
 	virtualTimeOffset = std::clamp(
 		virtualTimeOffset + deltaElapsed, -snapshotInterval * history.size(), .0f);
+	float historyOffset = virtualTimeOffset / snapshotInterval;
 	size_t current = std::clamp<size_t>(
-		history.size() + size_t(ceil(virtualTimeOffset / snapshotInterval)),
-		0, history.size() - 1);
+		history.size() + size_t(floor(historyOffset)), 0, history.size() - 1);
+	if (current < (history.size() - 1) /* && NEED TO INTERPOLATE */) {
+		float advancePct = 1 - (historyOffset - floor(historyOffset));
+		log("interpolating... current: " + std::to_string(current) + ", advancePct: " + std::to_string(advancePct));
+		latest = GameState(history.at(current), history.at(current+1), advancePct);
+		log("cur: " + history.at(current).string());
+		log("next: " + history.at(current+1).string());
+		log("lat: " + latest.string());
+		return;
+	}
 	latest = history.at(current);
 }
 
