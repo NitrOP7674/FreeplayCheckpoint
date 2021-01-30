@@ -22,41 +22,10 @@ BAKKESMOD_PLUGIN(CheckpointPlugin, "Freeplay Checkpoint", plugin_version, PLUGIN
 
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
-// TODO: make these configurable?
-static const float snapshotInterval = 0.010f; //time (s) between updates
-static const int maxHistory = 3000; // 3000*0.010s = 30s
-static const std::string SAVE_FILE_NAME = "freeplaycheckpoint.data";
-
-// Prevent loading an unknown version's save file.
-static const uint32_t SAVE_FILE_VERSION = 1;
-
-void CheckpointPlugin::loadCheckpointFile() {
-	std::ifstream in(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary);
-	uint32_t version;
-	readPOD(in, version);
-	if (version != SAVE_FILE_VERSION) {
-		in.close();
-		return;
-	}
-	int32_t numSaves;
-	readPOD(in, numSaves);
-	for (int32_t i = 0; i < numSaves; i++) {
-		checkpoints.emplace_back(in);
-	}
-	in.close();
-}
-
-void CheckpointPlugin::saveCheckpointFile() {
-	std::ofstream out(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary | std::ios::out | std::ios::trunc);
-	auto ver = SAVE_FILE_VERSION;
-	writePOD(out, ver);
-	auto size = int32_t(checkpoints.size());
-	writePOD(out, size);
-	for (auto& fav : checkpoints) {
-		fav.write(out);
-	}
-	out.close();
-}
+// Controlled by cvars.
+float snapshotInterval = 0.010f; //time (s) between updates
+int historyTime = 30; // length of history (s)
+int maxHistory = int(historyTime / snapshotInterval); // length of history (GameStates)
 
 void CheckpointPlugin::log(std::string s) {
 	if (debug) {
@@ -77,6 +46,28 @@ void CheckpointPlugin::onLoad()
 		"cpt_debug", "0", "If set, render debugging info", true, true, 0, true, 1, true);
 	debugCV.addOnValueChanged([this](std::string old, CVarWrapper now) { debug = now.getBoolValue(); });
 	debugCV.notify();
+
+	auto snapshotIntervalCV = cvarManager->registerCvar(
+		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
+	snapshotIntervalCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
+		snapshotInterval = now.getIntValue()/100.0f;
+		maxHistory = int(historyTime / snapshotInterval);
+		history.resize(0);
+		rewindMode = false;
+		dodgeExpiration = 0.0;
+	});
+	snapshotIntervalCV.notify();
+
+	auto historyLenCV = cvarManager->registerCvar(
+		"cpt_history_length", "30", "Save history for <n> seconds", true, true, 10, true, 120, true);
+	historyLenCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
+		historyTime = now.getIntValue();
+		maxHistory = int(historyTime / snapshotInterval);
+		if (history.size() > maxHistory) {
+			history.erase(history.begin(), history.begin() + history.size() - maxHistory);
+		}
+	});
+	historyLenCV.notify();
 
 	registerVarianceCVars();
 
@@ -370,4 +361,37 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
 		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
 	}
+}
+
+static const std::string SAVE_FILE_NAME = "freeplaycheckpoint.data";
+
+// Prevent loading an unknown version's save file.
+static const uint32_t SAVE_FILE_VERSION = 1;
+
+void CheckpointPlugin::loadCheckpointFile() {
+	std::ifstream in(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary);
+	uint32_t version;
+	readPOD(in, version);
+	if (version != SAVE_FILE_VERSION) {
+		in.close();
+		return;
+	}
+	int32_t numSaves;
+	readPOD(in, numSaves);
+	for (int32_t i = 0; i < numSaves; i++) {
+		checkpoints.emplace_back(in);
+	}
+	in.close();
+}
+
+void CheckpointPlugin::saveCheckpointFile() {
+	std::ofstream out(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary | std::ios::out | std::ios::trunc);
+	auto ver = SAVE_FILE_VERSION;
+	writePOD(out, ver);
+	auto size = int32_t(checkpoints.size());
+	writePOD(out, size);
+	for (auto& fav : checkpoints) {
+		fav.write(out);
+	}
+	out.close();
 }

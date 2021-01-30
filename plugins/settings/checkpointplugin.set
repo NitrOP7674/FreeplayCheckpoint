@@ -34,8 +34,11 @@ Freeplay Checkpoint
 9|
 9|Other options:
 8|
-1| Clean History -- Deletes future history points when resuming.|cpt_clean_history
-1| Debug -- Show debugging state|cpt_debug
+1|Clean History -- Deletes future history points when resuming|cpt_clean_history
+5|History Length (seconds)|cpt_history_length|10|120
+5|History Refresh Rate (ms)|cpt_snapshot_interval|1|10
+9|
+1|Debug -- Show debugging state|cpt_debug
 9|
 9|
 9| Freeplay Checkpoint
