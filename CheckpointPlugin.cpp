@@ -348,6 +348,7 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 		return;
 	}
 	log("no checkpoint to load");
+	virtualTimeOffset = 0;
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {
