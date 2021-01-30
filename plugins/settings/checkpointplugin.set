@@ -37,3 +37,6 @@ Freeplay Checkpoint Plugin
 1| Clean History -- Deletes future history points when resuming.|cpt_clean_history
 1| Debug -- Show debugging state|cpt_debug
 9|
+9|
+9| Freeplay Checkpoint
+9| Bugs/Feature Requests: github.com/NitrOP7674 -or- on Discord: NitroP#7674
