@@ -432,7 +432,6 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
 		return;
 	}
-	float factor = 2;
 	if (ci.Steer < -.95 && holdingFor <= 0) {
 		holdingFor -= elapsed;
 	} else if (ci.Steer > .95 && holdingFor >= 0) {
@@ -440,9 +439,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	} else {
 		holdingFor = 0;
 	}
-	if (abs(holdingFor) > 2 && factor < 5) {
-		factor += (abs(holdingFor)-2) * 2;
-	}
+	float factor = std::clamp((abs(holdingFor)-1) * 2, 2.0f, 5.0f);
 
 	// How much (in seconds) to move "current" (positive or negative)
 	float deltaElapsed = factor * elapsed * ci.Steer; // full left = 2-5 seconds/second
