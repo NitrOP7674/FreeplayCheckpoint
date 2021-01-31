@@ -1,3 +1,5 @@
+<p align="center"><img src="banner.png" width="350"></p>
+
 **Setup:**
 
 1. Open bakkesmod window (F2 by default)
