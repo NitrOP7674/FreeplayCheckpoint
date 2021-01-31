@@ -46,9 +46,6 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 	return o;
 }
 
-// Rotator uses ints instead of floats.  Floats are better.
-struct Rot { float Pitch, Yaw, Roll; };
-
 Rot VectorToRot(Vector vVector) {
 	Rot rRotation;
 	rRotation.Yaw = atan2(vVector.Y, vVector.X) * CONST_RadToUnrRot;

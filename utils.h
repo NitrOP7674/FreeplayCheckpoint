@@ -10,6 +10,7 @@
 
 #include <fstream>
 #include "bakkesmod/plugin/bakkesmodplugin.h"
+#include "utils/customrotator.h"
 
 static const float MAX_DODGE_TIME = 1.2f;
 
@@ -43,6 +44,10 @@ static inline void writeRot(std::ofstream& out, Rotator& r) {
 	writePOD(out, r.Roll);
 }
 
+// Rotator uses ints instead of floats.  Floats are better.
+struct Rot {
+	float Pitch, Yaw, Roll;
+};
 
 class GameState {
 public:
@@ -57,6 +62,19 @@ public:
 	float boostAmount;
 	bool hasDodge;
 	float lastJumped; // cannot apply; used to reset dodge in record().
+
+	std::string string(Vector v) {
+		return "(" + std::to_string(v.X) + "," + std::to_string(v.Y) + "," + std::to_string(v.Z) + ")";
+	}
+	std::string string(Rotator r) {
+		return "(" + std::to_string(r.Pitch) + "," + std::to_string(r.Yaw) + "," + std::to_string(r.Roll) + ")";
+	}
+	std::string string() {
+		return "carRotation: " + string(carRotation) + " asVec: " + string(RotatorToVector(carRotation));
+		return "ball: " + string(ballLocation) + " / " + string(ballVelocity) + " / " + string(ballRotation) + " / " + string(ballAngVelocity) +
+			"; car: " + string(carLocation) + " / " + string(carVelocity) + " / " + string(carRotation) + " / " + string(carAngVelocity) +
+			"; boost: " + std::to_string(boostAmount) + "; dodge: " + std::to_string(hasDodge) + "; lastJumped: " + std::to_string(lastJumped);
+	}
 
 	GameState() {
 		ballLocation = Vector(0, 0, 0);
@@ -116,6 +134,42 @@ public:
 		// After applying this, we will remove the player's dodge when the jump timer expires.
 		lastJumped = !c.GetbJumped() || c.GetJumpComponent().IsNull() ? -1 : c.GetJumpComponent().GetInactiveTime();
 		hasDodge = !c.GetbDoubleJumped() && lastJumped < MAX_DODGE_TIME;
+	}
+
+	// Returns the game state <percent (0-1.0)> way between lh and rh.
+	GameState(GameState lh, GameState rh, float percent) {
+		float rhPercent = 1 - percent;
+		ballLocation = lh.ballLocation*percent + rh.ballLocation*rhPercent;
+		carLocation = lh.carLocation*percent + rh.carLocation*rhPercent;
+		ballVelocity = lh.ballVelocity*percent + rh.ballVelocity*rhPercent;
+		carVelocity = lh.carVelocity*percent + rh.carVelocity*rhPercent;
+
+		/* Custom Rotator */
+		// TODO: There's a weird blip that goes slightly sideways when crossing verticle.
+		// Figure out a better way to interpolate.
+		CustomRotator rotator(percent);
+		CustomRotator br(rh.ballRotation);
+		CustomRotator bdiff = CustomRotator(lh.ballRotation).diffTo(br) * rotator;
+		ballRotation = (br - bdiff).ToRotator();
+
+		CustomRotator cr = CustomRotator(rh.carRotation);
+		CustomRotator cdiff = CustomRotator(lh.carRotation).diffTo(cr) * rotator;
+		carRotation = (cr - cdiff).ToRotator();
+
+		ballAngVelocity = lh.ballAngVelocity*percent + rh.ballAngVelocity*rhPercent;
+		carAngVelocity = lh.carAngVelocity*percent + rh.carAngVelocity*rhPercent;
+		boostAmount = lh.boostAmount*percent + rh.boostAmount*rhPercent;
+
+		if (lh.lastJumped == -1 || rh.lastJumped == -1) {
+			lastJumped = -1;
+			hasDodge = true;
+		} else if (rh.lastJumped < lh.lastJumped) {
+			lastJumped = 0;
+			hasDodge = true;
+		} else { // lh.lastJumped <= rh.lastJumped
+			lastJumped = lh.lastJumped*percent + rh.lastJumped*rhPercent;
+			hasDodge = lastJumped < MAX_DODGE_TIME;
+		}
 	}
 
 	void apply(ServerWrapper tw) {
