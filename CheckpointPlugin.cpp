@@ -103,6 +103,11 @@ void CheckpointPlugin::onLoad()
 		}
 		hasQuickCheckpoint = false;
 		if (atCheckpoint) { // Delete the current checkpoint we are at.
+			if (!deleting) {
+				deleting = true;
+				return;
+			}
+			deleting = false;
 			log("at cpt; erasing: " + std::to_string(curCheckpoint));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
@@ -203,6 +208,7 @@ void CheckpointPlugin::loadGameState(GameState &state) {
 	hasQuickCheckpoint = false;
 	justDeletedCheckpoint = false;
 	justLoadedQuickCheckpoint = false;
+	deleting = false;
 }
 
 void CheckpointPlugin::OnPreAsync(std::string funcName)
@@ -267,6 +273,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
 		return;
 	}
+	deleting = false;
 	if (ci.Steer < -.95 && holdingFor <= 0) {
 		holdingFor -= elapsed;
 	} else if (ci.Steer > .95 && holdingFor >= 0) {
@@ -335,12 +342,9 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 		return;
 	}
-	if (!debug && (!rewindMode || (!atCheckpoint && !justDeletedCheckpoint))) {
-		return;
-	}
-	auto screenSize = canvas.GetSize();
 	if (debug) {
 		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
+		auto screenSize = canvas.GetSize();
 		Vector2 loc = { (int)(screenSize.X * 0.08), (int)(screenSize.Y * 0.08) };
 		show(canvas, &loc, "rewindMode: " + std::to_string(rewindMode));
 		show(canvas, &loc, "atCheckpoint: " + std::to_string(atCheckpoint));
@@ -356,8 +360,18 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 			return;
 		}
 	}
-	Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
+	if (deleting) {
+		auto screenSize = canvas.GetSize();
+		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
+		loc.X = int(screenSize.X * .70);
+		canvas.SetPosition(loc);
+		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
+		canvas.DrawString("Press again to delete...", 5, 5);
+		return;
+	}
 	if (justDeletedCheckpoint) {
+		auto screenSize = canvas.GetSize();
+		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		loc.X = int(screenSize.X * .70);
 		canvas.SetPosition(loc);
 		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
@@ -365,6 +379,8 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		return;
 	}
 	if (atCheckpoint) {
+		auto screenSize = canvas.GetSize();
+		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		canvas.SetPosition(loc + Vector2{ 5,5 });
 		canvas.SetColor(0, 0, 0, 100);
 		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
