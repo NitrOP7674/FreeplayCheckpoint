@@ -78,6 +78,7 @@ void CheckpointPlugin::onLoad()
 	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState", [this](std::string eventName) {
 		rewindMode = false;
 		dodgeExpiration = 0.0;
+		lastRecordTime = 0;
 	});
 
 	// Enter rewind mode.
@@ -87,7 +88,7 @@ void CheckpointPlugin::onLoad()
 		}
 		latest = history.back();
 		loadGameState(latest);
-	}, "Activates rewind mode or saves the current position while in rewind mode", PERMISSION_FREEPLAY);
+	}, "Activates rewind mode", PERMISSION_FREEPLAY);
 
 	// If in play mode, load the latest checkpoint / quick checkpoint.
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
@@ -107,14 +108,16 @@ void CheckpointPlugin::onLoad()
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
 			atCheckpoint = false;
 			justDeletedCheckpoint = true;
+			saveCheckpointFile();
 			return;
 		}
 		// Add a new checkpoint here.
 		log("adding checkpoint " + std::to_string(checkpoints.size()));
+		curCheckpoint = checkpoints.size();
 		checkpoints.push_back(latest);
-		curCheckpoint = checkpoints.size() - 1;
 		atCheckpoint = true;
 		justDeletedCheckpoint = false;
+		saveCheckpointFile();
 	}, "Sets the car to the latest checkpoint", PERMISSION_FREEPLAY);
 
 	// Go to previous checkpoint.
@@ -164,7 +167,6 @@ void CheckpointPlugin::registerVarianceCVars() {
 }
 
 void CheckpointPlugin::onUnload() {
-	saveCheckpointFile();
 }
 
 void CheckpointPlugin::loadLatestCheckpoint() {
