@@ -11,46 +11,71 @@
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 #include "utils/parser.h"
+#include "state.h"
 
-#include "utils.h"
 #include "version.h"
 
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
+constexpr float MAX_DODGE_TIME = 1.2f;
 
-class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
+template<typename T>
+void writePOD(std::ofstream& out, const T& t) {
+	out.write(reinterpret_cast<const char*>(&t), sizeof(T));
+}
+
+template<typename T>
+void readPOD(std::ifstream& in, T& t) {
+	in.read(reinterpret_cast<char*>(&t), sizeof(T));
+}
+
+// Rotator uses ints instead of floats.  Floats are better.
+struct Rot {
+	float Pitch, Yaw, Roll;
+};
+
+// TODO: make this a full-on "RewindMode" class with functions for operations
+struct RewindState {
+	bool atCheckpoint = false;
+	float virtualTimeOffset = 0; // Delta from end of buffer to "now"
+	bool justDeletedCheckpoint = false;
+	bool justLoadedQuickCheckpoint = false;
+	float holdingFor = 0;
+	bool deleting = false;
+};
+
+class CheckpointPlugin : public BakkesMod::Plugin::BakkesModPlugin {
 	//Boilerplate
 	virtual void onLoad();
-	void captureBindKey(std::vector<std::string> params);
-	void removeBindKeys(std::vector<std::string> params);
-	void applyBindKeys(std::vector<std::string> params);
 	virtual void onUnload();
 
-	private:
-
+private:
+	RewindState rewindState;
 	std::vector<GameState> history;
-	float virtualTimeOffset = 0; // Delta from end of buffer to "now"
 	GameState latest;
 	std::vector<GameState> checkpoints;
 	size_t curCheckpoint = 0;
 	bool rewindMode = false;
-	bool atCheckpoint = false;
-	bool justDeletedCheckpoint = false;
 	float dodgeExpiration = 0;
 	bool hasQuickCheckpoint = false;
-	bool justLoadedQuickCheckpoint = false;
+	bool hasQuickIntraCheckpoint = false;
+	float quickIntraCheckpointTime = 0;
 	bool debug = false;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
-	float holdingFor = 0;
-	bool deleting = false;
+	std::vector<GameState> gameHistory;
+	int carNum = 0;
 
 	// Settings:
 	bool deleteFutureHistory = false;
-	
+
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);
 	void OnPreAsync(std::string funcName);
 	void registerVarianceCVars();
+	void registerBindingCVars();
+	void captureBindKey(std::vector<std::string> params);
+	void removeBindKeys(std::vector<std::string> params);
+	void applyBindKeys(std::vector<std::string> params);
 	GameState applyVariance(GameState& s);
 	void rewind(ServerWrapper sw);
 	void loadCheckpointFile();
@@ -59,7 +84,6 @@ class CheckpointPlugin: public BakkesMod::Plugin::BakkesModPlugin {
 	void record(ServerWrapper sw);
 	void loadLatestCheckpoint();
 	void loadCurCheckpoint();
-	void loadGameState(GameState& state);
+	void loadGameState(const GameState&);
 	void log(std::string s);
 };
-

@@ -41,8 +41,8 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 			std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
 			std::to_string(totVar));
 	}
-	o.carVelocity = deflect(o.carVelocity, carDir, 1 + (carSpd / 100.0f));
-	o.ballVelocity = deflect(o.ballVelocity, ballDir, 1 + (ballSpd / 100.0f));
+	o.car.actorState.velocity = deflect(o.car.actorState.velocity, carDir, 1 + (carSpd / 100.0f));
+	o.ball.velocity = deflect(o.ball.velocity, ballDir, 1 + (ballSpd / 100.0f));
 	return o;
 }
 

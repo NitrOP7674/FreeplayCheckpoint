@@ -9,6 +9,9 @@
 #include "pch.h"
 #include "CheckpointPlugin.h"
 #include "utils/parser.h"
+#include <functional>
+
+using namespace std::placeholders;
 
 void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
 	removeBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
@@ -28,6 +31,20 @@ static const std::vector<std::string> KEY_LIST = {
 	"XboxTypeS_A", "XboxTypeS_B", "XboxTypeS_X", "XboxTypeS_Y", "XboxTypeS_RightShoulder", "XboxTypeS_RightTrigger",
 	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
 	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
+
+void CheckpointPlugin::registerBindingCVars() {
+	cvarManager->registerCvar("cpt_freeze_key", "XboxTypeS_RightThumbStick", "Key to bind cpt_freeze to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_do_checkpoint_key", "XboxTypeS_Back", "Key to bind cpt_do_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_prev_checkpoint_key", "XboxTypeS_DPad_Left", "Key to bind cpt_prev_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerNotifier("cpt_remove_bindings", bind(&CheckpointPlugin::removeBindKeys, this, _1),
+		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
+		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_capture_key", bind(&CheckpointPlugin::captureBindKey, this, _1),
+		"Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
+}
+
 
 void CheckpointPlugin::captureBindKey(std::vector<std::string> params) {
 	if (params.size() != 2) {

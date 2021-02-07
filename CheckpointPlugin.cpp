@@ -102,17 +102,17 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		hasQuickCheckpoint = false;
-		if (atCheckpoint) { // Delete the current checkpoint we are at.
-			if (!deleting) {
-				deleting = true;
+		if (rewindState.atCheckpoint) { // Delete the current checkpoint we are at.
+			if (!rewindState.deleting) {
+				rewindState.deleting = true;
 				return;
 			}
-			deleting = false;
+			rewindState.deleting = false;
 			log("at cpt; erasing: " + std::to_string(curCheckpoint));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
-			atCheckpoint = false;
-			justDeletedCheckpoint = true;
+			rewindState.atCheckpoint = false;
+			rewindState.justDeletedCheckpoint = true;
 			saveCheckpointFile();
 			return;
 		}
@@ -120,23 +120,23 @@ void CheckpointPlugin::onLoad()
 		log("adding checkpoint " + std::to_string(checkpoints.size()));
 		curCheckpoint = checkpoints.size();
 		checkpoints.push_back(latest);
-		atCheckpoint = true;
-		justDeletedCheckpoint = false;
+		rewindState.atCheckpoint = true;
+		rewindState.justDeletedCheckpoint = false;
 		saveCheckpointFile();
-	}, "Sets the car to the latest checkpoint", PERMISSION_FREEPLAY);
+	}, "Saves/restores/removes a checkpoint (or saves gamestate in replay)", PERMISSION_FREEPLAY);
 
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 			return;
 		}
-		if (!justDeletedCheckpoint) {
+		if (!rewindState.justDeletedCheckpoint) {
 			// If you just deleted a checkpoint, prev should go one prior to
 			// the deleted one (the current one).
 			curCheckpoint = std::clamp<size_t>(curCheckpoint, 1, checkpoints.size()) - 1;
 		}
 		loadCurCheckpoint();
-	}, "Sets the car to the previous checkpoint", PERMISSION_FREEPLAY);
+	}, "Loads the previous checkpoint", PERMISSION_FREEPLAY);
 
 	// Go to next checkpoint.
 	cvarManager->registerNotifier("cpt_next_checkpoint", [this](std::vector<std::string> command) {
@@ -145,19 +145,10 @@ void CheckpointPlugin::onLoad()
 		}
 		curCheckpoint = std::clamp<size_t>(curCheckpoint + 1, 0, checkpoints.size() - 1);
 		loadCurCheckpoint();
-	}, "Sets the car to the next checkpoint", PERMISSION_FREEPLAY);
+	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
 	// Add default bindings.
-	cvarManager->registerCvar("cpt_freeze_key", "XboxTypeS_RightThumbStick", "Key to bind cpt_freeze to on cpt_apply_bindings");
-	cvarManager->registerCvar("cpt_do_checkpoint_key", "XboxTypeS_Back", "Key to bind cpt_do_checkpoint to on cpt_apply_bindings");
-	cvarManager->registerCvar("cpt_prev_checkpoint_key", "XboxTypeS_DPad_Left", "Key to bind cpt_prev_checkpoint to on cpt_apply_bindings");
-	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
-	cvarManager->registerNotifier("cpt_remove_bindings", bind(&CheckpointPlugin::removeBindKeys, this, _1),
-		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
-	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
-		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
-	cvarManager->registerNotifier("cpt_capture_key", bind(&CheckpointPlugin::captureBindKey, this, _1),
-		"Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
+	registerBindingCVars();
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
@@ -179,7 +170,7 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 		log("loading quick checkpoint");
 		loadGameState(quickCheckpoint);
 		hasQuickCheckpoint = true;
-		justLoadedQuickCheckpoint = true;
+		rewindState.justLoadedQuickCheckpoint = true;
 		return;
 	}
 	if (checkpoints.size() > 0) {
@@ -188,27 +179,27 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 		return;
 	}
 	log("no checkpoint to load");
-	virtualTimeOffset = 0;
-	holdingFor = 0;
+	rewindState.virtualTimeOffset = 0;
+	rewindState.holdingFor = 0;
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {
 	loadGameState(checkpoints.at(curCheckpoint));
-	atCheckpoint = true;
+	rewindState.atCheckpoint = true;
 }
 
-void CheckpointPlugin::loadGameState(GameState &state) {
+void CheckpointPlugin::loadGameState(const GameState &state) {
 	latest = state;
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
 	state.apply(sw);
-	virtualTimeOffset = 0;
-	holdingFor = 0;
+	rewindState.virtualTimeOffset = 0;
+	rewindState.holdingFor = 0;
 	rewindMode = true;
-	atCheckpoint = false;
+	rewindState.atCheckpoint = false;
 	hasQuickCheckpoint = false;
-	justDeletedCheckpoint = false;
-	justLoadedQuickCheckpoint = false;
-	deleting = false;
+	rewindState.justDeletedCheckpoint = false;
+	rewindState.justLoadedQuickCheckpoint = false;
+	rewindState.deleting = false;
 }
 
 void CheckpointPlugin::OnPreAsync(std::string funcName)
@@ -250,18 +241,18 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 
 	// See if we should exit rewind mode due to input.
 	if ((abs(ci.Throttle) > 0.1 || abs(ci.Roll) > 0.1 || ci.Handbrake || ci.Jump || ci.ActivateBoost || ci.HoldingBoost) ||
-		((atCheckpoint || justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05)) {
+		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05)) {
 		log("resuming...");
 		rewindMode = false;
 		lastRecordTime = currentTime;
-		dodgeExpiration = (latest.hasDodge && latest.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.lastJumped) : 0;
-		if (!atCheckpoint) {
+		dodgeExpiration = (latest.car.hasDodge && latest.car.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.car.lastJumped) : 0;
+		if (!rewindState.atCheckpoint) {
 			log("quick checkpoint taken");
 			hasQuickCheckpoint = true;
 			quickCheckpoint = latest;
 			if (deleteFutureHistory) {
 				size_t current = std::clamp<size_t>(
-					history.size() - 1 + size_t(ceil(virtualTimeOffset / snapshotInterval)),
+					history.size() - 1 + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
 					0, history.size() - 1);
 				history.erase(history.begin() + current, history.end());
 			}
@@ -273,31 +264,27 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
 		return;
 	}
-	deleting = false;
-	if (ci.Steer < -.95 && holdingFor <= 0) {
-		holdingFor -= elapsed;
-	} else if (ci.Steer > .95 && holdingFor >= 0) {
-		holdingFor += elapsed;
+	rewindState.deleting = false;
+	if (ci.Steer < -.95 && rewindState.holdingFor <= 0) {
+		rewindState.holdingFor -= elapsed;
+	} else if (ci.Steer > .95 && rewindState.holdingFor >= 0) {
+		rewindState.holdingFor += elapsed;
 	} else {
-		holdingFor = 0;
+		rewindState.holdingFor = 0;
 	}
-	float factor = std::clamp(abs(holdingFor) * 2, 1.0f, 5.0f);
+	float factor = std::clamp(abs(rewindState.holdingFor) * 2, 1.0f, 5.0f);
 
 	// How much (in seconds) to move "current" (positive or negative)
 	float deltaElapsed = factor * elapsed * ci.Steer; // full left = 2-5 seconds/second
 
-	virtualTimeOffset = std::clamp(
-		virtualTimeOffset + deltaElapsed, -snapshotInterval * history.size(), .0f);
-	float historyOffset = virtualTimeOffset / snapshotInterval;
+	rewindState.virtualTimeOffset = std::clamp(
+		rewindState.virtualTimeOffset + deltaElapsed, -snapshotInterval * history.size(), .0f);
+	float historyOffset = rewindState.virtualTimeOffset / snapshotInterval;
 	size_t current = std::clamp<size_t>(
 		history.size() + size_t(floor(historyOffset)), 0, history.size() - 1);
 	if (current < (history.size() - 1) /* && NEED TO INTERPOLATE */) {
 		float advancePct = 1 - (historyOffset - floor(historyOffset));
-		log("interpolating... current: " + std::to_string(current) + ", advancePct: " + std::to_string(advancePct));
 		latest = GameState(history.at(current), history.at(current+1), advancePct);
-		log("cur: " + history.at(current).string());
-		log("next: " + history.at(current+1).string());
-		log("lat: " + latest.string());
 		return;
 	}
 	latest = history.at(current);
@@ -307,6 +294,9 @@ void CheckpointPlugin::record(ServerWrapper sw)
 {
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = currentTime - lastRecordTime;
+	if (elapsed < 0) {
+		elapsed = snapshotInterval;
+	}
 	if (elapsed < snapshotInterval) {
 		return;
 	}
@@ -347,20 +337,20 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		auto screenSize = canvas.GetSize();
 		Vector2 loc = { (int)(screenSize.X * 0.08), (int)(screenSize.Y * 0.08) };
 		show(canvas, &loc, "rewindMode: " + std::to_string(rewindMode));
-		show(canvas, &loc, "atCheckpoint: " + std::to_string(atCheckpoint));
-		show(canvas, &loc, "justDeletedCheckpoint: " + std::to_string(justDeletedCheckpoint));
-		show(canvas, &loc, "justLoadedQuickCheckpoint: " + std::to_string(justLoadedQuickCheckpoint));
+		show(canvas, &loc, "atCheckpoint: " + std::to_string(rewindState.atCheckpoint));
+		show(canvas, &loc, "justDeletedCheckpoint: " + std::to_string(rewindState.justDeletedCheckpoint));
+		show(canvas, &loc, "justLoadedQuickCheckpoint: " + std::to_string(rewindState.justLoadedQuickCheckpoint));
 		show(canvas, &loc, "hasQuickCheckpoint: " + std::to_string(hasQuickCheckpoint));
-		show(canvas, &loc, "virtualTimeOffset: " + std::to_string(virtualTimeOffset));
+		show(canvas, &loc, "virtualTimeOffset: " + std::to_string(rewindState.virtualTimeOffset));
 		size_t current = std::clamp<size_t>(
-			history.size() + size_t(ceil(virtualTimeOffset / snapshotInterval)),
+			history.size() + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
 			0, history.size() - 1);
 		show(canvas, &loc, "current: " + std::to_string(current));
 		if (!rewindMode) {
 			return;
 		}
 	}
-	if (deleting) {
+	if (rewindState.deleting) {
 		auto screenSize = canvas.GetSize();
 		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		loc.X = int(screenSize.X * .70);
@@ -369,7 +359,7 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		canvas.DrawString("Press again to delete...", 5, 5);
 		return;
 	}
-	if (justDeletedCheckpoint) {
+	if (rewindState.justDeletedCheckpoint) {
 		auto screenSize = canvas.GetSize();
 		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		loc.X = int(screenSize.X * .70);
@@ -378,7 +368,7 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		canvas.DrawString("Checkpoint deleted!", 5, 5);
 		return;
 	}
-	if (atCheckpoint) {
+	if (rewindState.atCheckpoint) {
 		auto screenSize = canvas.GetSize();
 		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		canvas.SetPosition(loc + Vector2{ 5,5 });
@@ -390,10 +380,10 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	}
 }
 
-static const std::string SAVE_FILE_NAME = "freeplaycheckpoint.data";
+std::string_view SAVE_FILE_NAME = "freeplaycheckpoint.data";
 
 // Prevent loading an unknown version's save file.
-static const uint32_t SAVE_FILE_VERSION = 1;
+constexpr uint32_t SAVE_FILE_VERSION = 1;
 
 void CheckpointPlugin::loadCheckpointFile() {
 	std::ifstream in(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary);
@@ -401,6 +391,7 @@ void CheckpointPlugin::loadCheckpointFile() {
 	readPOD(in, version);
 	if (version != SAVE_FILE_VERSION) {
 		in.close();
+		log("could not load save file with version " + std::to_string(version));
 		return;
 	}
 	int32_t numSaves;
