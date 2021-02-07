@@ -346,9 +346,9 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 			history.size() + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
 			0, history.size() - 1);
 		show(canvas, &loc, "current: " + std::to_string(current));
-		if (!rewindMode) {
-			return;
-		}
+	}
+	if (!rewindMode) {
+		return;
 	}
 	if (rewindState.deleting) {
 		auto screenSize = canvas.GetSize();
