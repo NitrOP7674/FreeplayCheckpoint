@@ -272,7 +272,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	} else {
 		rewindState.holdingFor = 0;
 	}
-	float factor = std::clamp(abs(rewindState.holdingFor) * 2, 1.0f, 5.0f);
+	float factor = std::clamp(abs(rewindState.holdingFor) * 2, 1.0f, 10.0f);
 
 	// How much (in seconds) to move "current" (positive or negative)
 	float deltaElapsed = factor * elapsed * ci.Steer; // full left = 2-5 seconds/second
