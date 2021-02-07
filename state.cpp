@@ -154,8 +154,18 @@ GameState::GameState(std::ifstream& in) {
 }
 
 void GameState::write(std::ofstream& out) const {
-	ball.write(out);
-	car.write(out);
+	writeVec(out, ball.location);
+	writeVec(out, car.actorState.location);
+	writeVec(out, ball.velocity);
+	writeVec(out, car.actorState.velocity);
+	writeRot(out, ball.rotation);
+	writeRot(out, car.actorState.rotation);
+	writeVec(out, ball.angVelocity);
+	writeVec(out, car.actorState.angVelocity);
+	writePOD(out, car.boostAmount);
+	writePOD(out, car.hasDodge);
+	writePOD(out, car.lastJumped);
+
 }
 
 GameState::GameState(ServerWrapper sw) {
