@@ -33,19 +33,24 @@ void CheckpointPlugin::log(std::string s) {
 	}
 }
 
+void CheckpointPlugin::boolvar(std::string name, std::string desc, bool *var) {	
+	auto cv = cvarManager->registerCvar(name, "0", desc, true, true, 0, true, 1);
+	cv.addOnValueChanged([this, var](std::string old, CVarWrapper now) {
+		*var = now.getBoolValue();
+	});
+	cv.notify();
+}
+
 void CheckpointPlugin::onLoad()
 {
 	loadCheckpointFile();
 
-	auto cleanHistory = cvarManager->registerCvar(
-		"cpt_clean_history", "0", "If set, deletes history after the current point when exiting rewind mode", true, true, 0, true, 1, true);
-	cleanHistory.addOnValueChanged([this](std::string old, CVarWrapper now) { deleteFutureHistory = now.getBoolValue(); });
-	cleanHistory.notify();
+	boolvar("cpt_clean_history", "If set, deletes history after the current point when exiting rewind mode", &deleteFutureHistory);
 
-	auto debugCV = cvarManager->registerCvar(
-		"cpt_debug", "0", "If set, render debugging info", true, true, 0, true, 1, true);
-	debugCV.addOnValueChanged([this](std::string old, CVarWrapper now) { debug = now.getBoolValue(); });
-	debugCV.notify();
+	boolvar("cpt_reset_on_goal", "If set, restore last resumed checkpoint when scoring a goal", &resetOnGoal);
+	boolvar("cpt_reset_on_ball_ground", "If set, restore last resumed checkpoint when ball touches ground", &resetOnBallGround);
+
+	boolvar("cpt_debug", "If set, render debugging info", &debug);
 
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
@@ -72,20 +77,33 @@ void CheckpointPlugin::onLoad()
 	registerVarianceCVars();
 
 	// Continually call OnPreAsync.
-	gameWrapper->HookEvent("Function PlayerController_TA.Driving.PlayerMove", bind(&CheckpointPlugin::OnPreAsync, this, _1));
+	gameWrapper->HookEvent("Function PlayerController_TA.Driving.PlayerMove",
+		bind(&CheckpointPlugin::OnPreAsync, this, _1));
 
 	// Disable rewind mode if the user resets freeplay.
-	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState", [this](std::string eventName) {
-		rewindMode = false;
-		dodgeExpiration = 0.0;
-		lastRecordTime = 0;
-	});
+	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState",
+		[this](std::string eventName) {
+			playingFromCheckpoint = false;
+			rewindMode = false;
+			dodgeExpiration = 0.0;
+			lastRecordTime = 0;
+		});
+
+	gameWrapper->HookEvent("Function TAGame.Ball_TA.OnHitGoal",
+		[this](std::string eventName) {
+			if (!gameWrapper->IsInFreeplay() || rewindMode || !playingFromCheckpoint || !resetOnGoal) {
+				return;
+			}
+			gameWrapper->GetGameEventAsServer().PlayerResetTraining();
+			loadLatestCheckpoint();
+		});
 
 	// Enter rewind mode.
 	cvarManager->registerNotifier("cpt_freeze", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
 			return;
 		}
+		gameWrapper->GetGameEventAsServer().PlayerResetTraining();
 		latest = history.back();
 		loadGameState(latest);
 	}, "Activates rewind mode", PERMISSION_FREEPLAY);
@@ -98,6 +116,7 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		if (!rewindMode) {
+			gameWrapper->GetGameEventAsServer().PlayerResetTraining();
 			loadLatestCheckpoint();
 			return;
 		}
@@ -200,6 +219,8 @@ void CheckpointPlugin::loadGameState(const GameState &state) {
 	rewindState.justDeletedCheckpoint = false;
 	rewindState.justLoadedQuickCheckpoint = false;
 	rewindState.deleting = false;
+	rewindState.buttonsDown = 0x7f;
+	playingFromCheckpoint = true; // not playing yet but must resume eventually.
 }
 
 void CheckpointPlugin::OnPreAsync(std::string funcName)
@@ -228,7 +249,6 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 void CheckpointPlugin::rewind(ServerWrapper sw) {
 	ControllerInput ci = sw.GetCars().Get(0).GetInput();
 
-	static float lastRewindTime = 0.0f;
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = std::min(currentTime - lastRewindTime, 0.03f);
 	if (elapsed < 0) {
@@ -238,27 +258,36 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 		return;
 	}
 	lastRewindTime = currentTime;
-
+	int buttonsDown = (abs(ci.Throttle) > 0.1 ? 0x01 : 0) |
+		(abs(ci.Roll) > 0.1 ? 0x02 : 0) |
+		(ci.Handbrake ? 0x04 : 0) |
+		(ci.Jump ? 0x08 : 0) |
+		(ci.ActivateBoost ? 0x10 : 0) |
+		(ci.HoldingBoost ? 0x20 : 0) |
+		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05 ? 0x40 : 0);
 	// See if we should exit rewind mode due to input.
-	if ((abs(ci.Throttle) > 0.1 || abs(ci.Roll) > 0.1 || ci.Handbrake || ci.Jump || ci.ActivateBoost || ci.HoldingBoost) ||
-		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05)) {
-		log("resuming...");
-		rewindMode = false;
-		lastRecordTime = currentTime;
-		dodgeExpiration = (latest.car.hasDodge && latest.car.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.car.lastJumped) : 0;
-		if (!rewindState.atCheckpoint) {
-			log("quick checkpoint taken");
-			hasQuickCheckpoint = true;
-			quickCheckpoint = latest;
-			if (deleteFutureHistory) {
-				size_t current = std::clamp<size_t>(
-					history.size() - 1 + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
-					0, history.size() - 1);
-				history.erase(history.begin() + current, history.end());
+	if (buttonsDown != 0) {
+		if (buttonsDown > rewindState.buttonsDown) {
+			log("resuming...");
+			rewindMode = false;
+			lastRecordTime = currentTime;
+			dodgeExpiration = (latest.car.hasDodge && latest.car.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.car.lastJumped) : 0;
+			if (!rewindState.atCheckpoint) {
+				log("quick checkpoint taken");
+				hasQuickCheckpoint = true;
+				quickCheckpoint = latest;
+				if (deleteFutureHistory) {
+					size_t current = std::clamp<size_t>(
+						history.size() - 1 + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
+						0, history.size() - 1);
+					history.erase(history.begin() + current, history.end());
+				}
 			}
 		}
+		rewindState.buttonsDown = buttonsDown;
 		return;
 	}
+	rewindState.buttonsDown = buttonsDown;
 
 	// Determine how much to rewind / advance time.
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
@@ -300,14 +329,30 @@ void CheckpointPlugin::record(ServerWrapper sw)
 	if (elapsed < snapshotInterval) {
 		return;
 	}
+	// This cannot be event-based since goals may be disabled.
+	if (playingFromCheckpoint && (resetOnGoal || resetOnBallGround)) {
+		auto ball = sw.GetBall();
+		if (ball.IsNull()) {
+			return;
+		}
+		auto ballLoc = ball.GetLocation();
+		auto ballRad = Vector{};
+		ballRad.Y = ball.GetRadius();
+		if ((resetOnGoal && sw.IsInGoal(ballLoc - ballRad) && sw.IsInGoal(ballLoc + ballRad)) ||
+			(resetOnBallGround && ballLoc.Z < ballRad.Y + 3)) {
+			loadLatestCheckpoint();
+			return;
+		}
+	}
+
 	lastRecordTime = currentTime;
 	if (dodgeExpiration != 0) {
 		// If the timer expires or if the player double-jumps or gets a reset,
 		// clear the jump timer so we don't take the player's dodge.
 		auto c = sw.GetGameCar();
-		if (currentTime > dodgeExpiration ||
-			c.GetbDoubleJumped() ||
-			c.GetNumWheelContacts() == 4) {
+		if (c && (currentTime > dodgeExpiration ||
+				  c.GetbDoubleJumped() ||
+				  c.GetNumWheelContacts() == 4)) {
 			c.SetbJumped(true);
 			c.SetbDoubleJumped(true);
 			dodgeExpiration = 0;
@@ -342,6 +387,7 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 		show(canvas, &loc, "justLoadedQuickCheckpoint: " + std::to_string(rewindState.justLoadedQuickCheckpoint));
 		show(canvas, &loc, "hasQuickCheckpoint: " + std::to_string(hasQuickCheckpoint));
 		show(canvas, &loc, "virtualTimeOffset: " + std::to_string(rewindState.virtualTimeOffset));
+		show(canvas, &loc, "buttonsDown: " + std::to_string(rewindState.buttonsDown));
 		size_t current = std::clamp<size_t>(
 			history.size() + size_t(ceil(rewindState.virtualTimeOffset / snapshotInterval)),
 			0, history.size() - 1);

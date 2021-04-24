@@ -41,6 +41,7 @@ struct RewindState {
 	bool justLoadedQuickCheckpoint = false;
 	float holdingFor = 0;
 	bool deleting = false;
+	int buttonsDown = 0x7f;
 };
 
 class CheckpointPlugin : public BakkesMod::Plugin::BakkesModPlugin {
@@ -62,8 +63,12 @@ private:
 	bool debug = false;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
+	float lastRewindTime = 0;
 	std::vector<GameState> gameHistory;
 	int carNum = 0;
+	bool playingFromCheckpoint = false;
+	bool resetOnGoal = false;
+	bool resetOnBallGround = false;
 
 	// Settings:
 	bool deleteFutureHistory = false;
@@ -86,4 +91,5 @@ private:
 	void loadCurCheckpoint();
 	void loadGameState(const GameState&);
 	void log(std::string s);
+	void boolvar(std::string name, std::string desc, bool* var);
 };

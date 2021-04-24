@@ -30,7 +30,13 @@ Freeplay Checkpoint
 5|Ball Direction (degrees)|cpt_variance_ball_dir|0|30
 5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
 5|Max. Total Variance|cpt_variance_tot|0|50
+8|
 9|
+9|Auto-reset checkpoint - reset when the following occurs:
+8|
+1|Goal Scored|cpt_reset_on_goal
+1|Ball touches ground|cpt_reset_on_ball_ground
+8|
 9|
 9|Other options:
 8|
