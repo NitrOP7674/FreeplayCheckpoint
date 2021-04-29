@@ -86,7 +86,6 @@ void CheckpointPlugin::onLoad()
 			playingFromCheckpoint = false;
 			rewindMode = false;
 			dodgeExpiration = 0.0;
-			lastRecordTime = 0;
 		});
 
 	gameWrapper->HookEvent("Function TAGame.Ball_TA.OnHitGoal",
@@ -94,7 +93,6 @@ void CheckpointPlugin::onLoad()
 			if (!gameWrapper->IsInFreeplay() || rewindMode || !playingFromCheckpoint || !resetOnGoal) {
 				return;
 			}
-			gameWrapper->GetGameEventAsServer().PlayerResetTraining();
 			loadLatestCheckpoint();
 		});
 
@@ -103,7 +101,6 @@ void CheckpointPlugin::onLoad()
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
 			return;
 		}
-		gameWrapper->GetGameEventAsServer().PlayerResetTraining();
 		latest = history.back();
 		loadGameState(latest);
 	}, "Activates rewind mode", PERMISSION_FREEPLAY);
@@ -116,7 +113,6 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		if (!rewindMode) {
-			gameWrapper->GetGameEventAsServer().PlayerResetTraining();
 			loadLatestCheckpoint();
 			return;
 		}
@@ -210,6 +206,7 @@ void CheckpointPlugin::loadCurCheckpoint() {
 void CheckpointPlugin::loadGameState(const GameState &state) {
 	latest = state;
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
+	sw.PlayerResetTraining(); // In case there is a goal explosion in progress.
 	state.apply(sw);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
@@ -252,7 +249,8 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = std::min(currentTime - lastRewindTime, 0.03f);
 	if (elapsed < 0) {
-		elapsed = 0.01f;
+		lastRewindTime = currentTime;
+		return;
 	}
 	if (elapsed < 0.01f) {
 		return;
@@ -267,7 +265,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05 ? 0x40 : 0);
 	// See if we should exit rewind mode due to input.
 	if (buttonsDown != 0) {
-		if (buttonsDown > rewindState.buttonsDown) {
+		if (buttonsDown > rewindState.buttonsDown && currentTime - lastRecordTime > 0.1f) {
 			log("resuming...");
 			rewindMode = false;
 			lastRecordTime = currentTime;
