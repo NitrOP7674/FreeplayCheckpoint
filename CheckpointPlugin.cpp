@@ -138,7 +138,7 @@ void CheckpointPlugin::onLoad()
 		rewindState.atCheckpoint = true;
 		rewindState.justDeletedCheckpoint = false;
 		saveCheckpointFile();
-	}, "Saves/restores/removes a checkpoint (or saves gamestate in replay)", PERMISSION_FREEPLAY);
+	}, "Saves/restores/removes a checkpoint", PERMISSION_FREEPLAY);
 
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
@@ -334,10 +334,9 @@ void CheckpointPlugin::record(ServerWrapper sw)
 			return;
 		}
 		auto ballLoc = ball.GetLocation();
-		auto ballRad = Vector{};
-		ballRad.Y = ball.GetRadius();
-		if ((resetOnGoal && sw.IsInGoal(ballLoc - ballRad) && sw.IsInGoal(ballLoc + ballRad)) ||
-			(resetOnBallGround && ballLoc.Z < ballRad.Y + 3)) {
+		auto ballRad = ball.GetRadius();
+		if ((resetOnGoal && sw.IsInGoal(ballLoc)) ||
+			(resetOnBallGround && ballLoc.Z < ballRad + 5)) {
 			loadLatestCheckpoint();
 			return;
 		}
