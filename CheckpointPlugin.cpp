@@ -170,6 +170,26 @@ void CheckpointPlugin::onLoad()
 		loadCurCheckpoint();
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
+	cvarManager->registerNotifier("cpt_freeze_ball", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		if (rewindMode) {
+			freezeBall = true;  // takes us out of rewind mode
+			return;
+		}
+		if (ignorePNNotFrozen) {
+			return;
+		}
+		freezeBall = !freezeBall;
+		if (freezeBall) {
+			latest = history.back();
+		} else {
+			latest.car = history.back().car;
+			latest.apply(gameWrapper->GetGameEventAsServer());
+		}
+	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
+
 	// Add default bindings.
 	registerBindingCVars();
 
@@ -219,6 +239,7 @@ void CheckpointPlugin::loadGameState(const GameState &state) {
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
 	rewindMode = true;
+	freezeBall = false;
 	rewindState.atCheckpoint = false;
 	hasQuickCheckpoint = false;
 	rewindState.justDeletedCheckpoint = false;
@@ -240,6 +261,9 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 
 	if (rewindMode) {
 		rewind(sw);
+		if (freezeBall) {
+			rewindMode = false;
+		}
 		if (rewindMode) {
 			latest.apply(sw);
 		} else {
@@ -362,6 +386,10 @@ void CheckpointPlugin::record(ServerWrapper sw)
 			c.SetbDoubleJumped(true);
 			dodgeExpiration = 0;
 		}
+	}
+
+	if (freezeBall) {
+		latest.ball.apply(sw.GetBall());
 	}
 
 	// TODO: use a ring buffer?

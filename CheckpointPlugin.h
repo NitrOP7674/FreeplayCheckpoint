@@ -56,6 +56,7 @@ private:
 	std::vector<GameState> checkpoints;
 	size_t curCheckpoint = 0;
 	bool rewindMode = false;
+	bool freezeBall = false;
 	float dodgeExpiration = 0;
 	bool hasQuickCheckpoint = false;
 	bool hasQuickIntraCheckpoint = false;

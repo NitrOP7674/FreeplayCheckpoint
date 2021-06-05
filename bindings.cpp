@@ -18,6 +18,7 @@ void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
 	removeBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
 	removeBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
 	removeBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
+	removeBind(cvarManager->getCvar("cpt_freeze_ball_key").getStringValue(), "cpt_freeze_ball");
 }
 
 void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {
@@ -25,6 +26,7 @@ void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {
 	addBind(cvarManager->getCvar("cpt_do_checkpoint_key").getStringValue(), "cpt_do_checkpoint");
 	addBind(cvarManager->getCvar("cpt_prev_checkpoint_key").getStringValue(), "cpt_prev_checkpoint");
 	addBind(cvarManager->getCvar("cpt_next_checkpoint_key").getStringValue(), "cpt_next_checkpoint");
+	addBind(cvarManager->getCvar("cpt_freeze_ball_key").getStringValue(), "cpt_freeze_ball");
 }
 
 static const std::vector<std::string> KEY_LIST = {
@@ -37,6 +39,7 @@ void CheckpointPlugin::registerBindingCVars() {
 	cvarManager->registerCvar("cpt_do_checkpoint_key", "XboxTypeS_Back", "Key to bind cpt_do_checkpoint to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_prev_checkpoint_key", "XboxTypeS_DPad_Left", "Key to bind cpt_prev_checkpoint to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
+	cvarManager->registerCvar("cpt_freeze_ball_key", "XboxTypeS_DPad_Up", "Key to bind cpt_freeze_ball to on cpt_apply_bindings");
 	cvarManager->registerNotifier("cpt_remove_bindings", bind(&CheckpointPlugin::removeBindKeys, this, _1),
 		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),

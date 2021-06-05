@@ -13,6 +13,9 @@ Freeplay Checkpoint
 0|Next. Checkpoint|cpt_capture_key cpt_next_checkpoint
 7|
 9| [ $cpt_next_checkpoint_key$ ]
+0|Freeze Ball/Unfreeze Car|cpt_capture_key cpt_freeze_ball
+7|
+9| [ $cpt_freeze_ball_key$ ]
 8|
 0|  Apply Bindings  |cpt_apply_bindings
 7|
@@ -40,7 +43,7 @@ Freeplay Checkpoint
 9|
 9|Other options:
 8|
-1|Ignore next/prev when not frozen|cpt_next_prev_when_frozen
+1|Ignore cmds except freeze & do_checkpoint when not frozen|cpt_next_prev_when_frozen
 1|Clean History -- Deletes future history points when resuming|cpt_clean_history
 5|History Length (seconds)|cpt_history_length|10|120
 5|History Refresh Rate (ms)|cpt_snapshot_interval|1|10
