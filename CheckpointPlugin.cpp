@@ -179,6 +179,9 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		if (ignorePNNotFrozen) {
+			if (freezeBall) {
+				freezeBall = false;
+			}
 			return;
 		}
 		freezeBall = !freezeBall;
