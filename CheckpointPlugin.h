@@ -60,18 +60,19 @@ private:
 	bool hasQuickCheckpoint = false;
 	bool hasQuickIntraCheckpoint = false;
 	float quickIntraCheckpointTime = 0;
-	bool debug = false;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
 	float lastRewindTime = 0;
 	std::vector<GameState> gameHistory;
 	int carNum = 0;
 	bool playingFromCheckpoint = false;
-	bool resetOnGoal = false;
-	bool resetOnBallGround = false;
 
 	// Settings:
 	bool deleteFutureHistory = false;
+	bool ignorePNNotFrozen = false;
+	bool debug = false;
+	bool resetOnGoal = false;
+	bool resetOnBallGround = false;
 
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);

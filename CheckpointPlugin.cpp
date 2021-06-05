@@ -52,6 +52,8 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_debug", "If set, render debugging info", &debug);
 
+	boolvar("cpt_next_prev_when_frozen", "If set, ignore next/prev when not frozen", &ignorePNNotFrozen);
+
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
 	snapshotIntervalCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
@@ -145,6 +147,9 @@ void CheckpointPlugin::onLoad()
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 			return;
 		}
+		if (ignorePNNotFrozen && !rewindMode) {
+			return;
+		}
 		if (!rewindState.justDeletedCheckpoint) {
 			// If you just deleted a checkpoint, prev should go one prior to
 			// the deleted one (the current one).
@@ -156,6 +161,9 @@ void CheckpointPlugin::onLoad()
 	// Go to next checkpoint.
 	cvarManager->registerNotifier("cpt_next_checkpoint", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
+			return;
+		}
+		if (ignorePNNotFrozen && !rewindMode) {
 			return;
 		}
 		curCheckpoint = std::clamp<size_t>(curCheckpoint + 1, 0, checkpoints.size() - 1);
