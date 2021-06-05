@@ -74,6 +74,7 @@ private:
 	bool debug = false;
 	bool resetOnGoal = false;
 	bool resetOnBallGround = false;
+	bool nextInsteadOfReset = false;
 
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);

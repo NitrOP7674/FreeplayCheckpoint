@@ -49,6 +49,7 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_reset_on_goal", "If set, restore last resumed checkpoint when scoring a goal", &resetOnGoal);
 	boolvar("cpt_reset_on_ball_ground", "If set, restore last resumed checkpoint when ball touches ground", &resetOnBallGround);
+	boolvar("cpt_next_instead_of_reset", "If set, load next checkpoint instead of resetting", &nextInsteadOfReset);
 
 	boolvar("cpt_debug", "If set, render debugging info", &debug);
 
@@ -369,6 +370,14 @@ void CheckpointPlugin::record(ServerWrapper sw)
 		auto ballRad = ball.GetRadius();
 		if ((resetOnGoal && sw.IsInGoal(ballLoc)) ||
 			(resetOnBallGround && ballLoc.Z < ballRad + 5)) {
+			if (nextInsteadOfReset) {
+				curCheckpoint++;
+				if (curCheckpoint == checkpoints.size()) {
+					curCheckpoint = 0;
+				}
+				loadCurCheckpoint();
+				return;
+			}
 			loadLatestCheckpoint();
 			return;
 		}

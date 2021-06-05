@@ -39,6 +39,8 @@ Freeplay Checkpoint
 8|
 1|Goal Scored|cpt_reset_on_goal
 1|Ball touches ground|cpt_reset_on_ball_ground
+9|
+1|Load next checkpoint instead of resetting|cpt_next_instead_of_reset
 8|
 9|
 9|Other options:
