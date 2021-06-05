@@ -178,19 +178,16 @@ void CheckpointPlugin::onLoad()
 			freezeBall = true;  // takes us out of rewind mode
 			return;
 		}
-		if (ignorePNNotFrozen) {
-			if (freezeBall) {
-				freezeBall = false;
-			}
-			return;
-		}
-		freezeBall = !freezeBall;
 		if (freezeBall) {
-			latest = history.back();
-		} else {
+			freezeBall = false;
 			latest.car = history.back().car;
 			latest.apply(gameWrapper->GetGameEventAsServer());
+			return;
 		}
+		if (ignorePNNotFrozen) {
+			return;
+		}
+		freezeBall = true;
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
 	// Add default bindings.
