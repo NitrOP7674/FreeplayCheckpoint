@@ -95,4 +95,5 @@ private:
 	void loadGameState(const GameState&);
 	void log(std::string s);
 	void boolvar(std::string name, std::string desc, bool* var);
+	void writeSettingsFile();
 };

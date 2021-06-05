@@ -196,6 +196,8 @@ void CheckpointPlugin::onLoad()
 
 	// Draw the checkpoint or notification about checkpoint deletion.
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
+
+	writeSettingsFile();
 }
 
 void CheckpointPlugin::registerVarianceCVars() {
