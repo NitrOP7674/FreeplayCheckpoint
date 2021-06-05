@@ -59,8 +59,6 @@ private:
 	bool freezeBall = false;
 	float dodgeExpiration = 0;
 	bool hasQuickCheckpoint = false;
-	bool hasQuickIntraCheckpoint = false;
-	float quickIntraCheckpointTime = 0;
 	GameState quickCheckpoint;
 	float lastRecordTime = 0;
 	float lastRewindTime = 0;

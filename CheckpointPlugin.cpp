@@ -183,6 +183,8 @@ void CheckpointPlugin::onLoad()
 			freezeBall = false;
 			latest.car = history.back().car;
 			latest.apply(gameWrapper->GetGameEventAsServer());
+			quickCheckpoint = latest;
+			hasQuickCheckpoint = true;
 			return;
 		}
 		if (ignorePNNotFrozen) {
@@ -372,7 +374,7 @@ void CheckpointPlugin::record(ServerWrapper sw)
 		auto ballRad = ball.GetRadius();
 		if ((resetOnGoal && sw.IsInGoal(ballLoc)) ||
 			(resetOnBallGround && ballLoc.Z < ballRad + 5)) {
-			if (nextInsteadOfReset) {
+			if (nextInsteadOfReset && !hasQuickCheckpoint && checkpoints.size() > 0) {
 				curCheckpoint++;
 				if (curCheckpoint == checkpoints.size()) {
 					curCheckpoint = 0;
