@@ -123,9 +123,6 @@
   <ItemGroup>
     <ResourceCompile Include="CheckpointPlugin.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="plugins\settings\checkpointplugin.set" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
