@@ -14,21 +14,24 @@ void CheckpointPlugin::writeSettingsFile() {
 	setFile << R"(Freeplay Checkpoint
 9|Bindings - Enter Freeplay, HOLD button you wish to assign and click desired action button
 8|
-0|        Freeze        |cpt_capture_key cpt_freeze
+0|                  Freeze (cpt_freeze)                  |cpt_capture_key cpt_freeze
 7|
 9| [ $cpt_freeze_key$ ]
-0|     Checkpoint    |cpt_capture_key cpt_do_checkpoint
+0|         Checkpoint (cpt_do_checkpoint)       |cpt_capture_key cpt_do_checkpoint
 7|
 9| [ $cpt_do_checkpoint_key$ ]
-0|Prev. Checkpoint|cpt_capture_key cpt_prev_checkpoint
+0|  Prev. Checkpoint (cpt_prev_checkpoint)  |cpt_capture_key cpt_prev_checkpoint
 7|
 9| [ $cpt_prev_checkpoint_key$ ]
-0|Next. Checkpoint|cpt_capture_key cpt_next_checkpoint
+0|  Next. Checkpoint (cpt_next_checkpoint)  |cpt_capture_key cpt_next_checkpoint
 7|
 9| [ $cpt_next_checkpoint_key$ ]
-0|Freeze Ball/Unfreeze Car|cpt_capture_key cpt_freeze_ball
+0|Freeze Ball/Unfreeze Car (cpt_freeze_ball) |cpt_capture_key cpt_freeze_ball
 7|
 9| [ $cpt_freeze_ball_key$ ]
+0|  Rewind & Fast Forward (cannot change)  |
+7|
+9| [ Steer Left & Right ]
 8|
 0|  Apply Bindings  |cpt_apply_bindings
 7|
@@ -37,6 +40,7 @@ void CheckpointPlugin::writeSettingsFile() {
 0| Remove Bindings  |cpt_remove_bindings
 7|
 9|:(
+9|** KBM players: bind cpt_ commands manually in Bakkesmod Bindings tab **
 8|
 9|
 9|Variance - applied when leaving rewind mode
