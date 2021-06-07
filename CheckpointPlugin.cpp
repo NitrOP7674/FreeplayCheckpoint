@@ -172,7 +172,7 @@ void CheckpointPlugin::onLoad()
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
 	cvarManager->registerNotifier("cpt_freeze_ball", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
 			return;
 		}
 		if (rewindMode) {
@@ -190,6 +190,8 @@ void CheckpointPlugin::onLoad()
 		if (ignorePNNotFrozen) {
 			return;
 		}
+		latest = history.back();
+		latest.apply(gameWrapper->GetGameEventAsServer());
 		freezeBall = true;
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
