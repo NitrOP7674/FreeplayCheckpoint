@@ -12,22 +12,22 @@
 #include "CheckpointPlugin.h"
 #include "utils/customrotator.h"
 
-static inline void readVec(std::ifstream& in, Vector& v) {
+static inline void readVec(std::istream& in, Vector& v) {
 	readPOD(in, v.X);
 	readPOD(in, v.Y);
 	readPOD(in, v.Z);
 }
-static inline void writeVec(std::ofstream& out, const Vector& v) {
+static inline void writeVec(std::ostream& out, const Vector& v) {
 	writePOD(out, v.X);
 	writePOD(out, v.Y);
 	writePOD(out, v.Z);
 }
-static inline void readRot(std::ifstream& in, Rotator& r) {
+static inline void readRot(std::istream& in, Rotator& r) {
 	readPOD(in, r.Pitch);
 	readPOD(in, r.Yaw);
 	readPOD(in, r.Roll);
 }
-static inline void writeRot(std::ofstream& out, const Rotator& r) {
+static inline void writeRot(std::ostream& out, const Rotator& r) {
 	writePOD(out, r.Pitch);
 	writePOD(out, r.Yaw);
 	writePOD(out, r.Roll);
@@ -61,13 +61,13 @@ ActorState::ActorState(ActorState lh, ActorState rh, float percent) {
 
 	angVelocity = lh.angVelocity * percent + rh.angVelocity * rhPercent;
 }
-ActorState::ActorState(std::ifstream& in) {
+ActorState::ActorState(std::istream& in) {
 	readVec(in, location);
 	readVec(in, velocity);
 	readRot(in, rotation);
 	readVec(in, angVelocity);
 }
-void ActorState::write(std::ofstream& out) const {
+void ActorState::write(std::ostream& out) const {
 	writeVec(out, location);
 	writeVec(out, velocity);
 	writeRot(out, rotation);
@@ -79,7 +79,6 @@ void ActorState::apply(ActorWrapper a) const {
 	a.SetRotation(rotation);
 	a.SetAngularVelocity(angVelocity, false);
 }
-
 CarState::CarState() {
 	actorState = ActorState();
 	boostAmount = 0;
@@ -111,14 +110,14 @@ CarState::CarState(CarState lh, CarState rh, float percent) {
 	}
 }
 
-CarState::CarState(std::ifstream& in) {
+CarState::CarState(std::istream& in) {
 	actorState = ActorState(in);
 	readPOD(in, boostAmount);
 	readPOD(in, hasDodge);
 	readPOD(in, lastJumped);
 }
 
-void CarState::write(std::ofstream& out) const {
+void CarState::write(std::ostream& out) const {
 	actorState.write(out);
 	writePOD(out, boostAmount);
 	writePOD(out, hasDodge);
@@ -139,7 +138,7 @@ GameState::GameState() {
 	car = CarState();
 }
 
-GameState::GameState(std::ifstream& in) {
+GameState::GameState(std::istream& in) {
 	readVec(in, ball.location);
 	readVec(in, car.actorState.location);
 	readVec(in, ball.velocity);
@@ -153,7 +152,7 @@ GameState::GameState(std::ifstream& in) {
 	readPOD(in, car.lastJumped);
 }
 
-void GameState::write(std::ofstream& out) const {
+void GameState::write(std::ostream& out) const {
 	writeVec(out, ball.location);
 	writeVec(out, car.actorState.location);
 	writeVec(out, ball.velocity);
@@ -185,4 +184,71 @@ void GameState::apply(ServerWrapper sw) const {
 	}
 	ball.apply(sw.GetBall());
 	car.apply(sw.GetGameCar());
+}
+
+/*
+ * base64enc and base64dec from https://stackoverflow.com/a/34571089.  No license
+ * information provided.
+ */
+
+const std::string_view b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+std::string base64enc(const std::string in) {
+	std::string out;
+
+	unsigned val = 0;
+	int valb = -6;
+	for (unsigned char c : in) {
+		val = (val << 8) + c;
+		valb += 8;
+		while (valb >= 0) {
+			out.push_back(b64[(val >> valb) & 0x3F]);
+			valb -= 6;
+		}
+	}
+	if (valb > -6) out.push_back(b64[((val << 8) >> (valb + 8)) & 0x3F]);
+	while (out.size() % 4) out.push_back('=');
+	return out;
+}
+
+const std::string base64dec(const std::string in) {
+	std::string out;
+
+	std::vector<int> T(256, -1);
+	for (int i = 0; i < 64; i++) T[b64[i]] = i;
+
+	unsigned val = 0;
+	int valb = -8;
+	for (unsigned char c : in) {
+		if (T[c] == -1) break;
+		val = (val << 6) + T[c];
+		valb += 6;
+		if (valb >= 0) {
+			out.push_back(char((val >> valb) & 0xFF));
+			valb -= 8;
+		}
+	}
+	return out;
+}
+
+GameState::GameState(const std::string enc) {
+	std::string dec = base64dec(enc);
+	std::istringstream stream(dec);
+	readVec(stream, ball.location);
+	readVec(stream, car.actorState.location);
+	readVec(stream, ball.velocity);
+	readVec(stream, car.actorState.velocity);
+	readRot(stream, ball.rotation);
+	readRot(stream, car.actorState.rotation);
+	readVec(stream, ball.angVelocity);
+	readVec(stream, car.actorState.angVelocity);
+	readPOD(stream, car.boostAmount);
+	readPOD(stream, car.hasDodge);
+	readPOD(stream, car.lastJumped);
+}
+
+const std::string GameState::toString() const {
+	std::ostringstream dec;
+	write(dec);
+	return base64enc(dec.str());
 }

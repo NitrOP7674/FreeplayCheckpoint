@@ -21,9 +21,9 @@ public:
 	ActorState();
 	ActorState(ActorWrapper a);
 	ActorState(ActorState lh, ActorState rh, float percent);
-	ActorState(std::ifstream& in);
+	ActorState(std::istream& in);
 
-	void write(std::ofstream& out) const;
+	void write(std::ostream& out) const;
 	void apply(ActorWrapper a) const;
 };
 
@@ -37,9 +37,9 @@ public:
 	CarState();
 	CarState(CarWrapper c);
 	CarState(CarState lh, CarState rh, float percent);
-	CarState(std::ifstream& in);
+	CarState(std::istream& in);
 
-	void write(std::ofstream& out) const;
+	void write(std::ostream& out) const;
 	void apply(CarWrapper c) const;
 };
 
@@ -51,8 +51,10 @@ public:
 	GameState();
 	GameState(ServerWrapper sw);
 	GameState(const GameState& lh, const GameState& rh, float percent);
-	GameState(std::ifstream& in);
+	GameState(std::istream& in);
+	GameState(std::string str);
 
-	void write(std::ofstream& out) const;
+	void write(std::ostream& out) const;
 	void apply(ServerWrapper sw) const;
+	const std::string toString() const;
 };

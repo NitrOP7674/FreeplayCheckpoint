@@ -19,12 +19,12 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 constexpr float MAX_DODGE_TIME = 1.2f;
 
 template<typename T>
-void writePOD(std::ofstream& out, const T& t) {
+void writePOD(std::ostream& out, const T& t) {
 	out.write(reinterpret_cast<const char*>(&t), sizeof(T));
 }
 
 template<typename T>
-void readPOD(std::ifstream& in, T& t) {
+void readPOD(std::istream& in, T& t) {
 	in.read(reinterpret_cast<char*>(&t), sizeof(T));
 }
 

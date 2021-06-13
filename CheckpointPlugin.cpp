@@ -195,6 +195,74 @@ void CheckpointPlugin::onLoad()
 		freezeBall = true;
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
+	cvarManager->registerNotifier("cpt_copy", [this](std::vector<std::string> command) {
+		std::string output;
+		if (rewindMode) {
+			cvarManager->log("Copying current position");
+			output = latest.toString();
+		} else if (hasQuickCheckpoint) {
+			cvarManager->log("Copying quick checkpoint");
+			output = quickCheckpoint.toString();
+		} else if (checkpoints.size() > 0) {
+			cvarManager->log("Copying checkpoint " + std::to_string(curCheckpoint+1));
+			output = checkpoints.at(curCheckpoint).toString();
+		} else {
+			cvarManager->log("No checkpoint to copy!");
+			return;
+		}
+		output = "cpv1" + output + ".";
+		OpenClipboard(nullptr);
+		EmptyClipboard();
+		HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, output.size()+1);
+		if (hg == nullptr) {
+			cvarManager->log("Error copying to clipboard!");
+			CloseClipboard();
+			return;
+		}
+		LPVOID lptstrCopy = GlobalLock(hg);
+		if (lptstrCopy == nullptr) {
+			cvarManager->log("Error copying to clipboard!");
+			CloseClipboard();
+			return;
+		}
+		memcpy(lptstrCopy, output.c_str(), output.size()+1);
+		GlobalUnlock(hg);
+		SetClipboardData(CF_TEXT, hg);
+		CloseClipboard();
+		GlobalFree(hg);
+		cvarManager->log("Data copied to clipboard!");
+		log("Written to clipboard: " + output);
+	}, "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
+
+	cvarManager->registerNotifier("cpt_paste", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		OpenClipboard(nullptr);
+		HANDLE hData = GetClipboardData(CF_TEXT);
+		if (hData == nullptr) {
+			cvarManager->log("Error reading clipboard!");
+			return;
+		}
+		char* pszText = static_cast<char*>(GlobalLock(hData));
+		if (pszText == nullptr) {
+			cvarManager->log("Error reading clipboard!");
+			return;
+		}
+		std::string input(pszText);
+		GlobalUnlock(hData);
+		CloseClipboard();
+		log("Read from clipboard: " + input);
+		if (input.substr(0, 4) != "cpv1" || input[input.size() - 1] != '.') {
+			cvarManager->log("Malformed checkpoint in clipboard: " + input);
+			return;
+		}
+		quickCheckpoint = GameState(input.substr(4, input.size() - 5));
+		loadGameState(quickCheckpoint);
+		hasQuickCheckpoint = true;
+		rewindState.justLoadedQuickCheckpoint = true;
+	}, "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_ALL);
+
 	// Add default bindings.
 	registerBindingCVars();
 
