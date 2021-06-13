@@ -4,11 +4,12 @@
 
 1. Open bakkesmod window (F2 by default)
 2. Click "Plugins"
-3. Find "Freeplay Checkpoint Plugin"
-4. Optionally choose new button bindings.
+3. Find "Freeplay Checkpoint" in the plugin list on the left.
+4. Optional: choose new button bindings.
 5. Click "Apply Bindings"
 
-Alternatively, assign the "cpt" commands as desired in the "Bindings" tab.
+Alternatively, or for KBM users: assign the `cpt_` commands (listed in the Command
+Reference section below) as desired in the "Bindings" tab.
 
 **Basic Usage:**
 
@@ -20,8 +21,8 @@ Note: assumes default bindings from above.
 4. When you find a point in time to save, press the Back (or Select or Share) button.
 5. Resume driving.
 6. Press Back again to return to that checkpoint.
-7. Press Back on a currently frozen checkpoint to delete it.
-8. Press left/right on the dpad to navigate between multiple checkpoints.
+7. Press Back (twice) on a currently frozen checkpoint to delete it.
+8. Press left/right on the dpad to navigate between multiple saved checkpoints.
 
 **Command Reference:**
 
@@ -32,12 +33,14 @@ Note: assumes default bindings from above.
   - While playing: loads the latest checkpoint
 - `cpt_prev_checkpoint` / `cpt_next_checkpoint`: loads the previous/next saved checkpoint
 - `cpt_freeze_ball`:
-  - In rewind mode: unfreezes the player's car
-  - While playing: freezes the ball
-- `cpt_copy`:
+  - In rewind mode: unfreezes the player's car while keeping the ball frozen
+  - While playing: freezes the ball without freezing the player's car
+- `cpt_copy`\*:
   - In rewind mode: copy the current state to the clipboard
   - While playing: copy the last loaded checkpoint or quick checkpoint to the clipboard
-- `cpt_paste`: load a checkpoint from the clipboard as a quick checkpoint
+- `cpt_paste`\*: load a checkpoint from the clipboard as a quick checkpoint
+
+\* - The `cpt_copy` and `cpt_paste` commands can be entered in the F6 console of bakkesmod.
 
 **Settings Reference:**
 
@@ -63,4 +66,4 @@ in the settings pane.
 
 **Contact:**
 
-Feel free to submit features or bug requests on Github, or contact me on Discord at NitroP#7674.
+Feel free to submit feature requests or bugs on Github, or contact me on Discord at NitroP#7674.
