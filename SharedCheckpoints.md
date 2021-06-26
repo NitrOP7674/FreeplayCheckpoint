@@ -4,6 +4,11 @@ Please submit your own saved checkpoints by filing an issue in this repo at:
 https://github.com/NitrOP7674/FreeplayCheckpoint/issues/new (or send a PR to
 if you know how).  Or DM on Discord @NitroP#7674.
 
+## Famous shots
+
+- RLCS 8 Grand Finals, Game 7 OT game-winner by JSTN:
+  `cpv1tLyzxHgtZcXseJpDhr1lxXCjBMWvnI1B38a4wtTWLkU0wnJEVDE4RLbRy0QG6os/sRUAAKiQ//+ITgAAdv///60uAAAKAAAAptVoP2NimkA4vlzA7lU7O4y02Txo6B86pcsIPwEAAIC/.`
+
 ## Wall to Air
 
 - Midfield, right wall, after pop:
