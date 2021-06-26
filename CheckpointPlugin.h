@@ -93,5 +93,6 @@ private:
 	void loadGameState(const GameState&);
 	void log(std::string s);
 	void boolvar(std::string name, std::string desc, bool* var);
+	std::unique_ptr<GameState> getReplayGameState();
 	void writeSettingsFile();
 };

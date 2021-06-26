@@ -172,6 +172,11 @@ GameState::GameState(ServerWrapper sw) {
 	car = CarState(sw.GetGameCar());
 }
 
+GameState::GameState(CarWrapper cw, BallWrapper bw) {
+	ball = ActorState(bw);
+	car = CarState(cw);
+}
+
 // Returns the game state <percent (0-1.0)> way between lh and rh.
 GameState::GameState(const GameState &lh, const GameState &rh, float percent) {
 	ball = ActorState(lh.ball, rh.ball, percent);

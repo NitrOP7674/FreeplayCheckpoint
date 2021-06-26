@@ -50,6 +50,7 @@ public:
 
 	GameState();
 	GameState(ServerWrapper sw);
+	GameState(CarWrapper cw, BallWrapper bw);
 	GameState(const GameState& lh, const GameState& rh, float percent);
 	GameState(std::istream& in);
 	GameState(std::string str);

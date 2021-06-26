@@ -41,6 +41,46 @@ void CheckpointPlugin::boolvar(std::string name, std::string desc, bool *var) {
 	cv.notify();
 }
 
+std::unique_ptr<GameState> CheckpointPlugin::getReplayGameState() {
+	ReplayServerWrapper replay = gameWrapper->GetGameEventAsReplay();
+	if (!replay) {
+		cvarManager->log("Error getting replay");
+		return nullptr;
+	}
+	BallWrapper ball = replay.GetBall();
+	if (!ball) {
+		cvarManager->log("Error getting ball");
+		return nullptr;
+	}
+	CameraWrapper cam = gameWrapper->GetCamera();
+	if (!cam) {
+		cvarManager->log("Error getting camera");
+		return nullptr;
+	}
+	PriWrapper specPRI = PriWrapper(reinterpret_cast<std::uintptr_t>(cam.GetViewTarget().PRI));
+	if (!specPRI) {
+		cvarManager->log("Error getting PRI");
+		return nullptr;
+	}
+	std::string playerName = specPRI.GetPlayerName().ToString();
+
+	ArrayWrapper<CarWrapper> cars = replay.GetCars();
+	for (int i = 0; i < cars.Count(); i++) {
+		CarWrapper car = cars.Get(i);
+		if (!car) {
+			continue;
+		}
+		PriWrapper pri = car.GetPRI();
+		if (!pri) {
+			continue;
+		}
+		if (playerName == pri.GetPlayerName().ToString()) {
+			return std::unique_ptr<GameState>(new GameState(car, ball));
+		}
+	}
+	return nullptr;
+}
+
 void CheckpointPlugin::onLoad()
 {
 	loadCheckpointFile();
@@ -112,6 +152,16 @@ void CheckpointPlugin::onLoad()
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
 	// TODO: different button for delete?
 	cvarManager->registerNotifier("cpt_do_checkpoint", [this](std::vector<std::string> command) {
+		if (gameWrapper->IsInReplay()) {
+			std::unique_ptr<GameState> gs = getReplayGameState();
+			if (gs == nullptr) {
+				return;
+			}
+			cvarManager->log("adding checkpoint " + std::to_string(checkpoints.size()+1));
+			checkpoints.push_back(*gs);
+			saveCheckpointFile();
+			return;
+		}
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 			return;
 		}
@@ -126,7 +176,7 @@ void CheckpointPlugin::onLoad()
 				return;
 			}
 			rewindState.deleting = false;
-			log("at cpt; erasing: " + std::to_string(curCheckpoint));
+			log("at cpt; erasing: " + std::to_string(curCheckpoint+1));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
 			rewindState.atCheckpoint = false;
@@ -135,13 +185,13 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		// Add a new checkpoint here.
-		log("adding checkpoint " + std::to_string(checkpoints.size()));
+		log("adding checkpoint " + std::to_string(checkpoints.size()+1));
 		curCheckpoint = checkpoints.size();
 		checkpoints.push_back(latest);
 		rewindState.atCheckpoint = true;
 		rewindState.justDeletedCheckpoint = false;
 		saveCheckpointFile();
-	}, "Saves/restores/removes a checkpoint", PERMISSION_FREEPLAY);
+	}, "Saves/restores/removes a checkpoint", PERMISSION_ALL);
 
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
@@ -154,7 +204,11 @@ void CheckpointPlugin::onLoad()
 		if (!rewindState.justDeletedCheckpoint) {
 			// If you just deleted a checkpoint, prev should go one prior to
 			// the deleted one (the current one).
-			curCheckpoint = std::clamp<size_t>(curCheckpoint, 1, checkpoints.size()) - 1;
+			if (curCheckpoint == 0) {
+				curCheckpoint = checkpoints.size() - 1;
+			} else {
+				curCheckpoint--;
+			}
 		}
 		loadCurCheckpoint();
 	}, "Loads the previous checkpoint", PERMISSION_FREEPLAY);
@@ -167,7 +221,10 @@ void CheckpointPlugin::onLoad()
 		if (ignorePNNotFrozen && !rewindMode) {
 			return;
 		}
-		curCheckpoint = std::clamp<size_t>(curCheckpoint + 1, 0, checkpoints.size() - 1);
+		curCheckpoint++;
+		if (curCheckpoint == checkpoints.size()) {
+			curCheckpoint = 0;
+		}
 		loadCurCheckpoint();
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
@@ -196,8 +253,14 @@ void CheckpointPlugin::onLoad()
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
 
 	cvarManager->registerNotifier("cpt_copy", [this](std::vector<std::string> command) {
-		std::string output;
-		if (rewindMode) {
+		std::string output = "";
+		if (gameWrapper->IsInReplay()) {
+			std::unique_ptr<GameState> gs = getReplayGameState();
+			if (gs == nullptr) {
+				return;
+			}
+			output = gs->toString();
+		} else if (rewindMode) {
 			cvarManager->log("Copying current position");
 			output = latest.toString();
 		} else if (hasQuickCheckpoint) {
@@ -292,7 +355,7 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 		return;
 	}
 	if (checkpoints.size() > 0) {
-		log("loading checkpoint " + std::to_string(curCheckpoint));
+		log("loading checkpoint " + std::to_string(curCheckpoint+1));
 		loadCurCheckpoint();
 		return;
 	}
