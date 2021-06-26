@@ -1,5 +1,9 @@
 # Shared Checkpoints
 
+How to use: copy the string for the shot you wish to load.  Then go into freeplay mode,
+press F6, and type `cpt_paste`.  That will load the shot.  Optionally press the
+`cpt_do_checkpoint` button to save the checkpoint as a numbered checkpoint.
+
 Please submit your own saved checkpoints by filing an issue in this repo at:
 https://github.com/NitrOP7674/FreeplayCheckpoint/issues/new (or send a PR to
 if you know how).  Or DM on Discord @NitroP#7674.
