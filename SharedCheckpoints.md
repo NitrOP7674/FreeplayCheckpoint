@@ -10,6 +10,8 @@ if you know how).  Or DM on Discord @NitroP#7674.
 
 ## Famous shots
 
+To be more realistic, you should disable unlimited boost in freeplay in your RL settings.
+
 - RLCS 8 Grand Finals, Game 7 OT game-winner by JSTN:
   `cpv1tLyzxHgtZcXseJpDhr1lxXCjBMWvnI1B38a4wtTWLkU0wnJEVDE4RLbRy0QG6os/sRUAAKiQ//+ITgAAdv///60uAAAKAAAAptVoP2NimkA4vlzA7lU7O4y02Txo6B86pcsIPwEAAIC/.`
 
