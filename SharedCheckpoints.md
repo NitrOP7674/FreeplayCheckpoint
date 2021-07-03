@@ -12,8 +12,30 @@ if you know how).  Or DM on Discord @NitroP#7674.
 
 To be more realistic, you should disable unlimited boost in freeplay in your RL settings.
 
-- RLCS 8 Grand Finals, Game 7 OT game-winner by JSTN:
+- RLCS 4 EU League Play Week 4, Game 1 "Angle of the century" by Al0t
+  `cpv1/xf8RI26P0QJVgFE4WsFRQ5rmsVkZI5Bubbsw8+hF8XE0K5E6JpixEqZf8TylLxBOigAAG2P//8/5P//+f///+Wi//+D////hPCfwOyGK8BZo/q/d6WFv6hYB72mQFi87uxsPgEAAIC/.`
+- RLCS 4 LAN Day 3, Game 4 ceiling shot off kickoff by C9 Squishy
+  `cpv1840RRId2vUI3uA9Dt9RKRbBRc0VCP4ZBVYMMRWSkj0P57+1Cg0qDROUYp8Qwis09vej//4NNAABbBwAAk////2fR//8FAAAAPEnmv79DMT5VE7dApb0WPYnslTyOWD/A/ml4PwEAAIC/.`
+- RLCS 5 LAN Day 1, Game 1 backboard flip reset doomsee-dish ... thing ... by Deevo
+  `cpv1OIP2Q/Lul0SMxI1E8pb0RDnKtES/zRtE7FW4Q8iNAMXyB43E8SodxMDOocTulaBDfgcAAJZ4AAD7yP//RdL//xd4AAB3WQAA7N2Tv4F4qsADBNe/FQCkwPzG+7+dha2+9tchPwEAAIC/.`
+  After Deevo's first touch
+  `cpv15U5jRIE5KMWNkGFEMxxxRMFPJsUYLyZEsnvRwwrE6MRbVJhETNdwwxy2+8RxOBxEAMz//+1OAADQcQAAayQAAPqG//8F8///l+K6voyhKkCsOby/J2YrwFIPC8AFUaO/TNo0PgEAAIC/.`
+- RLCS 5 Grand Finals, Game 2 goal by GarrettG
+  `cpv1Rh5BxVkxk0XeGp1EeZBHxYWDiEVJHIVEAFFWRJnwL0RNor9EGpdiROOV38MimZhEQgAAAFgzAADzQgAACw4AAPErAAAQDAAAfXl5P/28J8BQ36lA7WRWQHJthUBp+6M/2tjYPgEAAIC/.`
+- RLCS 5 Grand Finals, Game 7 zero-second game-tying goal by JSTN
+  `cpv1ksFxxc4VE0N8BJFDJQCRwjHSHMVCqIpBOkmtRHYgoEQ0uaxEavMjxCchBEXYWEE8pRMAAKLH///K8v//nP///wlIAAAAAAAAZqA6vxqGLcAprqlAzK/mOAAAAABqCPi/kZAQPwEAAIC/.`
+- RLCS 7 Quarter Finals, Game 2 double-tap by Squishy
+  `cpv1j2SzRKlRcUQCh0tEDk27wmwXgkNyvItBUkcsxOF/tESSHoNDP4SQQ/id30SMeG4/KuP//8iZ//9JNwAAnP///5k5AAAAAAAAYDwhQE60lkAb9S5ASI/EOIWxBbqFmVu7yC4ePwEAAIC/.`
+  After Squishy's first touch
+  `cpv1HSJJRFz4QEUIoDxEd9AxRJy/MkUDxiJEzP5VRLWLIUUcfMRDYjhPROky0UTu2tRD7O///2fL//9JRQAAGBkAAEvM//83MgAAYLATvxiyvr/gELlAxcQIwJfFZkDz5WPAxMLCPgEAAIC/.`
+- RLCS 7 Semi Finals, Game 1 flip reset dunk by Squishy
+  `cpv1ReiLRLzVZUWI7XVEed5Wwf8tMEXO/opBiRpOxBtTAEXNyaTDWzamwpfZ00Rwmlc/iun//xkmAAAFkP//nP///wJCAAABAAAAr3e2wL37C78Wh6c/9hJFOVCy6LkOkA2/KPXTPgEAAIC/.`
+- RLCS 8 Grand Finals, Game 7 OT game-winner by JSTN
   `cpv1tLyzxHgtZcXseJpDhr1lxXCjBMWvnI1B38a4wtTWLkU0wnJEVDE4RLbRy0QG6os/sRUAAKiQ//+ITgAAdv///60uAAAKAAAAptVoP2NimkA4vlzA7lU7O4y02Txo6B86pcsIPwEAAIC/.`
+- RLCS 9 Noly’s pre flip corner double tap
+  `cpv1DbQmRdxWsEQyuMZD7N8hRZqqkES57qBD7RnRQ0bPKEX+fBxEApu7Q8rt50R9mVFDfvb//3AoAAAaof//PwcAAOMpAACB1v//hV+ZQNLGM8DcDBFAMc49wM/ysD91do3AemoXPwEAAIC/.`
+- RLCS X Spring Major Grand Finals, Game 5 pinch by MaRc_By_8.
+  `cpv1fZMPxZMGeUXsx/pCF64gRPl2Z8MZBYhBkoVORVOU1MT0qcpCeeXzxOMsMMRiEFg+etz//1tWAACOOwAAm/////6L//8AAAAALJpOvHHhckDDtpTAgRi+OhgNuzkDih+/7+1tPwEAAIC/.`
 
 ## Wall to Air
 
