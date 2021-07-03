@@ -31,6 +31,7 @@ Note: assumes default bindings from above.
   - In rewind mode, not at a saved checkpoint: saves the current state as a checkpoint
   - In rewind mode, at a saved checkpoint: deletes the current checkpoint (press twice)
   - While playing: loads the latest checkpoint
+  - In a replay, saves the currently selected car & ball as a checkpoint
 - `cpt_prev_checkpoint` / `cpt_next_checkpoint`: loads the previous/next saved checkpoint
 - `cpt_freeze_ball`:
   - In rewind mode: unfreezes the player's car while keeping the ball frozen
@@ -38,6 +39,7 @@ Note: assumes default bindings from above.
 - `cpt_copy`\*:
   - In rewind mode: copy the current state to the clipboard
   - While playing: copy the last loaded checkpoint or quick checkpoint to the clipboard
+  - In a replay: copy the currently selected car & ball to the clipboard
 - `cpt_paste`\*: load a checkpoint from the clipboard as a quick checkpoint
 
 \* - The `cpt_copy` and `cpt_paste` commands can be entered in the F6 console of bakkesmod.
