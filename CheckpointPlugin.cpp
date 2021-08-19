@@ -406,7 +406,8 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 			latest.apply(sw);
 		} else {
 			// Exited rewind mode.
-			applyVariance(latest).apply(sw);
+			GameState now(sw);
+			applyVariance(now).apply(sw);
 		}
 	} else {
 		record(sw);
