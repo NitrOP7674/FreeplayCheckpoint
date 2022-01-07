@@ -18,6 +18,8 @@
 
 using namespace std::placeholders;
 
+std::string_view DEFAULT_SAVE_FILE_NAME = "freeplaycheckpoint.data";
+
 BAKKESMOD_PLUGIN(CheckpointPlugin, "Freeplay Checkpoint", plugin_version, PLUGINTYPE_FREEPLAY)
 
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
@@ -83,8 +85,6 @@ std::unique_ptr<GameState> CheckpointPlugin::getReplayGameState() {
 
 void CheckpointPlugin::onLoad()
 {
-	loadCheckpointFile();
-
 	boolvar("cpt_clean_history", "If set, deletes history after the current point when exiting rewind mode", &deleteFutureHistory);
 
 	boolvar("cpt_reset_on_goal", "If set, restore last resumed checkpoint when scoring a goal", &resetOnGoal);
@@ -117,7 +117,18 @@ void CheckpointPlugin::onLoad()
 	});
 	historyLenCV.notify();
 
+	auto filenameCV = cvarManager->registerCvar(
+		"cpt_filename", static_cast<std::string>(DEFAULT_SAVE_FILE_NAME), "Sets the filename to use for saved checkpoints", true, false, 0, false, 0, true);
+	filenameCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
+		rewindMode = false;
+		curCheckpoint = 0;
+		loadCheckpointFile();
+	});
+	snapshotIntervalCV.notify();
+
 	registerVarianceCVars();
+
+	loadCheckpointFile();
 
 	// Continually call OnPreAsync.
 	gameWrapper->HookEvent("Function PlayerController_TA.Driving.PlayerMove",
@@ -606,13 +617,12 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	}
 }
 
-std::string_view SAVE_FILE_NAME = "freeplaycheckpoint.data";
-
 // Prevent loading an unknown version's save file.
 constexpr uint32_t SAVE_FILE_VERSION = 1;
 
 void CheckpointPlugin::loadCheckpointFile() {
-	std::ifstream in(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary);
+	checkpoints.clear();
+	std::ifstream in(gameWrapper->GetDataFolder() / cvarManager->getCvar("cpt_filename").getStringValue(), std::ios::binary);
 	uint32_t version;
 	readPOD(in, version);
 	if (version != SAVE_FILE_VERSION) {
@@ -629,7 +639,7 @@ void CheckpointPlugin::loadCheckpointFile() {
 }
 
 void CheckpointPlugin::saveCheckpointFile() {
-	std::ofstream out(gameWrapper->GetDataFolder() / SAVE_FILE_NAME, std::ios::binary | std::ios::out | std::ios::trunc);
+	std::ofstream out(gameWrapper->GetDataFolder() / cvarManager->getCvar("cpt_filename").getStringValue(), std::ios::binary | std::ios::out | std::ios::trunc);
 	auto ver = SAVE_FILE_VERSION;
 	writePOD(out, ver);
 	auto size = int32_t(checkpoints.size());
