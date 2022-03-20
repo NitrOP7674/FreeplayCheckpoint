@@ -82,14 +82,15 @@ void ActorState::apply(ActorWrapper a) const {
 
 ActorState ActorState::mirror() const {
 	ActorState as = *this;
-	as.location.Y *= -1;
-	as.velocity.Y *= -1;
-	as.angVelocity.X *= -1;
+	as.location.X *= -1;
+	as.velocity.X *= -1;
+	as.angVelocity.Y *= -1;
 	as.angVelocity.Z *= -1;
 	auto q = RotatorToQuat(rotation);
-	q.X *= -1;
+	q.Y *= -1;
 	q.Z *= -1;
-	as.rotation = QuatToRotator(q);
+	Quat r(0, 0, 0, 1);
+	as.rotation = QuatToRotator(q*r);
 	return as;
 }
 
