@@ -95,6 +95,8 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_next_prev_when_frozen", "If set, ignore next/prev when not frozen", &ignorePNNotFrozen);
 
+	boolvar("cpt_mirror_shot", "If set, mirror when loading checkpoints", &mirrorShot);
+
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
 	snapshotIntervalCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
@@ -376,7 +378,11 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {
-	loadGameState(checkpoints.at(curCheckpoint));
+	auto checkpoint = checkpoints.at(curCheckpoint);
+	if (mirrorShot && rand() % 2 == 0) {
+		checkpoint = checkpoint.mirror();
+	}
+	loadGameState(checkpoint);
 	rewindState.atCheckpoint = true;
 }
 

@@ -25,6 +25,7 @@ public:
 
 	void write(std::ostream& out) const;
 	void apply(ActorWrapper a) const;
+	ActorState mirror() const;
 };
 
 class CarState {
@@ -41,6 +42,7 @@ public:
 
 	void write(std::ostream& out) const;
 	void apply(CarWrapper c) const;
+	CarState mirror() const;
 };
 
 class GameState {
@@ -58,4 +60,5 @@ public:
 	void write(std::ostream& out) const;
 	void apply(ServerWrapper sw) const;
 	const std::string toString() const;
+	GameState mirror() const;
 };

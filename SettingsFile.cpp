@@ -50,6 +50,8 @@ void CheckpointPlugin::writeSettingsFile() {
 5|Ball Direction (degrees)|cpt_variance_ball_dir|0|30
 5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
 5|Max. Total Variance|cpt_variance_tot|0|50
+9|
+1|Randomly mirror when loading checkpoint|cpt_mirror_shot
 8|
 9|
 9|Auto-reset checkpoint - reset when the following occurs:

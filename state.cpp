@@ -79,6 +79,20 @@ void ActorState::apply(ActorWrapper a) const {
 	a.SetRotation(rotation);
 	a.SetAngularVelocity(angVelocity, false);
 }
+
+ActorState ActorState::mirror() const {
+	ActorState as = *this;
+	as.location.Y *= -1;
+	as.velocity.Y *= -1;
+	as.angVelocity.X *= -1;
+	as.angVelocity.Z *= -1;
+	auto q = RotatorToQuat(rotation);
+	q.X *= -1;
+	q.Z *= -1;
+	as.rotation = QuatToRotator(q);
+	return as;
+}
+
 CarState::CarState() {
 	actorState = ActorState();
 	boostAmount = 0;
@@ -131,6 +145,12 @@ void CarState::apply(CarWrapper c) const {
 	}
 	c.SetbDoubleJumped(!hasDodge);
 	c.SetbJumped(!hasDodge);
+}
+
+CarState CarState::mirror() const {
+	CarState cs = *this;
+	cs.actorState = cs.actorState.mirror();
+	return cs;
 }
 
 GameState::GameState() {
@@ -189,6 +209,13 @@ void GameState::apply(ServerWrapper sw) const {
 	}
 	ball.apply(sw.GetBall());
 	car.apply(sw.GetGameCar());
+}
+
+GameState GameState::mirror() const {
+	GameState gs;
+	gs.car = car.mirror();
+	gs.ball = ball.mirror();
+	return gs;
 }
 
 /*
