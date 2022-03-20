@@ -74,6 +74,7 @@ void CheckpointPlugin::writeSettingsFile() {
 9|
 9| Freeplay Checkpoint
 9| Bugs/Feature Requests: github.com/NitrOP7674 -or- on Discord: NitroP#7674
+9| ** Please make sure to read the README first! **
 )";
 	setFile.close();
 	cvarManager->executeCommand("cl_settings_refreshplugins");

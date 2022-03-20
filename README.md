@@ -46,20 +46,25 @@ Note: assumes default bindings from above.
 
 **Settings Reference:**
 
-- **Bindings**: KBM players should manually bind the cpt_ keys in the bindings section.
-  Controller players may hold the button they wish to bind and click the action they
-  wish to bind to that button.
-- **Variance**: when resuming play from frozen, apply randomness to the scenario
-- **Auto-reset checkpoint**: allows drilling a shot or running through shots like a
-  training pack
+- **Bindings**:
+  - KBM players should manually bind the cpt_ keys in the bindings section.
+  - Controller players may hold the button they wish to bind and click the action they
+    wish to bind to that button.
+- **Variance**:
+  - When resuming play from frozen, apply randomness to the scenario.
+- **Randomly mirror when loading checkpoint**:
+  - Randomly mirrors shots when loading to practice opposite angles.
+- **Auto-reset checkpoint**:
+  - Allows drilling a shot or running through shots like a training pack.
 - **Ignore cmds except freeze & do_checkpoint when not frozen**:
   - Allows for binding dpad buttons to prev/next/freeze ball while not interfering with
     bakkesmod default commands.
-- **Clean History**: when rewinding and restoring an old state, deletes history after that
-  restored point.
+- **Clean History**:
+  - When rewinding and restoring an old state, deletes history after that restored point.
 - **History Length**: amount of history to save
-- **History Refresh Rate**: interval between saved state points.  Set small for maximum
-  smoothness in history data, but at the possible expense of worse performance.
+- **History Refresh Rate**:
+  - Interval between saved state points.  Set small for maximum smoothness in history data,
+    but at the possible expense of worse performance.
 
 **Uninstalling:**
 
