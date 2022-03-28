@@ -95,7 +95,8 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_next_prev_when_frozen", "If set, ignore next/prev when not frozen", &ignorePNNotFrozen);
 
-	boolvar("cpt_mirror_shot", "If set, mirror when loading checkpoints", &mirrorShot);
+	boolvar("cpt_mirror_shot", "If set, randomly mirror when loading checkpoints", &mirrorShot);
+	boolvar("cpt_randomize_loads", "If set, load a random checkpoint instead of the latest", &randomizeLoads);
 
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
@@ -179,6 +180,10 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		if (!rewindMode) {
+			if (randomizeLoads) {
+				loadRandomCheckpoint();
+				return;
+			}
 			loadLatestCheckpoint();
 			return;
 		}
@@ -240,6 +245,13 @@ void CheckpointPlugin::onLoad()
 		}
 		loadCurCheckpoint();
 	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
+
+	cvarManager->registerNotifier("cpt_rand_checkpoint", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		loadRandomCheckpoint();
+	}, "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
 
 	cvarManager->registerNotifier("cpt_freeze_ball", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
@@ -375,6 +387,15 @@ void CheckpointPlugin::loadLatestCheckpoint() {
 	log("no checkpoint to load");
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
+}
+
+void CheckpointPlugin::loadRandomCheckpoint() {
+	if (checkpoints.size() == 0) {
+		return;
+	}
+	hasQuickCheckpoint = false;
+	curCheckpoint = rand() % checkpoints.size();
+	loadLatestCheckpoint();
 }
 
 void CheckpointPlugin::loadCurCheckpoint() {

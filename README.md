@@ -33,6 +33,7 @@ Note: assumes default bindings from above.
   - While playing: loads the latest checkpoint
   - In a replay, saves the currently selected car & ball as a checkpoint
 - `cpt_prev_checkpoint` / `cpt_next_checkpoint`: loads the previous/next saved checkpoint
+- `cpt_rand_checkpoint`: loads a random saved checkpoint
 - `cpt_freeze_ball`:
   - In rewind mode: unfreezes the player's car while keeping the ball frozen
   - While playing: freezes the ball without freezing the player's car
@@ -54,6 +55,9 @@ Note: assumes default bindings from above.
   - When resuming play from frozen, apply randomness to the scenario.
 - **Randomly mirror when loading checkpoint**:
   - Randomly mirrors shots when loading to practice opposite angles.
+  **Load random checkpoint**:
+  - When not frozen and `cpt_do_checkpoint` is pressed, load a random checkpoint instead
+    of the latest one.
 - **Auto-reset checkpoint**:
   - Allows drilling a shot or running through shots like a training pack.
 - **Ignore cmds except freeze & do_checkpoint when not frozen**:

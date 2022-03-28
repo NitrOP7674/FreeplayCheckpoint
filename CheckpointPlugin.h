@@ -74,6 +74,7 @@ private:
 	bool resetOnBallGround = false;
 	bool nextInsteadOfReset = false;
 	bool mirrorShot = false;
+	bool randomizeLoads = false;
 
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);
@@ -91,6 +92,7 @@ private:
 	void record(ServerWrapper sw);
 	void loadLatestCheckpoint();
 	void loadCurCheckpoint();
+	void loadRandomCheckpoint();
 	void loadGameState(const GameState&);
 	void log(std::string s);
 	void boolvar(std::string name, std::string desc, bool* var);

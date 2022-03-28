@@ -52,6 +52,7 @@ void CheckpointPlugin::writeSettingsFile() {
 5|Max. Total Variance|cpt_variance_tot|0|50
 9|
 1|Randomly mirror when loading checkpoint|cpt_mirror_shot
+1|Load random checkpoint instead of latest|cpt_randomize_loads
 8|
 9|
 9|Auto-reset checkpoint - reset when the following occurs:
