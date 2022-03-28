@@ -164,7 +164,6 @@ void CheckpointPlugin::onLoad()
 
 	// If in play mode, load the latest checkpoint / quick checkpoint.
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
-	// TODO: different button for delete?
 	cvarManager->registerNotifier("cpt_do_checkpoint", [this](std::vector<std::string> command) {
 		if (gameWrapper->IsInReplay()) {
 			std::unique_ptr<GameState> gs = getReplayGameState();
@@ -189,13 +188,20 @@ void CheckpointPlugin::onLoad()
 		}
 		hasQuickCheckpoint = false;
 		if (rewindState.atCheckpoint) { // Delete the current checkpoint we are at.
+			if (locks.size() > curCheckpoint && locks[curCheckpoint]) {
+				log("at cpt but locked: " + std::to_string(curCheckpoint + 1));
+				return;
+			}
 			if (!rewindState.deleting) {
 				rewindState.deleting = true;
 				return;
 			}
 			rewindState.deleting = false;
-			log("at cpt; erasing: " + std::to_string(curCheckpoint+1));
+			log("at cpt; removing: " + std::to_string(curCheckpoint+1));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
+			if (locks.size() > curCheckpoint) {
+				locks.erase(locks.begin() + curCheckpoint);
+			}
 			curCheckpoint = std::min(curCheckpoint, checkpoints.size() - 1);
 			rewindState.atCheckpoint = false;
 			rewindState.justDeletedCheckpoint = true;
@@ -211,6 +217,27 @@ void CheckpointPlugin::onLoad()
 		saveCheckpointFile();
 	}, "Saves/restores/removes a checkpoint", PERMISSION_ALL);
 
+	// "Locks" or "unlocks" a checkpoint to prevent/allow its removal.
+	cvarManager->registerNotifier("cpt_lock_checkpoint", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		if (!rewindMode || !rewindState.atCheckpoint) {
+			return;
+		}
+		rewindState.deleting = false;
+		if (locks.size() <= curCheckpoint) {
+			locks.resize(curCheckpoint + 1);
+		}
+		if (locks[curCheckpoint]) {
+			log("at cpt; unlocking: " + std::to_string(curCheckpoint + 1));
+		} else {
+			log("at cpt; locking: " + std::to_string(curCheckpoint + 1));
+		}
+		locks[curCheckpoint] = !locks[curCheckpoint];
+		saveCheckpointFile();
+	}, "Saves/restores/removes a checkpoint", PERMISSION_ALL);
+	
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
@@ -634,13 +661,21 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	}
 	if (rewindState.atCheckpoint) {
 		auto screenSize = canvas.GetSize();
+		std::string l = "";
+		if (locks.size() > curCheckpoint && locks[curCheckpoint]) {
+			l = " (L)";
+		}
 		Vector2 loc = { (int)(screenSize.X * 0.80), (int)(screenSize.Y * 0.08) };
 		canvas.SetPosition(loc + Vector2{ 5,5 });
 		canvas.SetColor(0, 0, 0, 100);
-		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
+		canvas.DrawString(std::to_string(curCheckpoint + 1) +
+			" | " +
+			std::to_string(checkpoints.size()) + l, 6, 6);
 		canvas.SetPosition(loc);
 		canvas.SetColor('\xff', '\xff', '\xff', '\xdc');
-		canvas.DrawString(std::to_string(curCheckpoint + 1) + " | " + std::to_string(checkpoints.size()), 6, 6);
+		canvas.DrawString(std::to_string(curCheckpoint + 1) +
+			" | " +
+			std::to_string(checkpoints.size()) + l, 6, 6);
 	}
 }
 
@@ -649,6 +684,7 @@ constexpr uint32_t SAVE_FILE_VERSION = 1;
 
 void CheckpointPlugin::loadCheckpointFile() {
 	checkpoints.clear();
+	locks.clear();
 	std::ifstream in(gameWrapper->GetDataFolder() / cvarManager->getCvar("cpt_filename").getStringValue(), std::ios::binary);
 	uint32_t version;
 	readPOD(in, version);
@@ -662,6 +698,13 @@ void CheckpointPlugin::loadCheckpointFile() {
 	for (int32_t i = 0; i < numSaves; i++) {
 		checkpoints.emplace_back(in);
 	}
+	int32_t numLocks = 0; // older save files did not have this data; initialize to 0.
+	readPOD(in, numLocks);
+	for (int32_t i = 0; i < numLocks; i++) {
+		bool locked;
+		readPOD(in, locked);
+		locks.push_back(locked);
+	}
 	in.close();
 }
 
@@ -673,6 +716,11 @@ void CheckpointPlugin::saveCheckpointFile() {
 	writePOD(out, size);
 	for (auto& fav : checkpoints) {
 		fav.write(out);
+	}
+	size = int32_t(locks.size());
+	writePOD(out, size);
+	for (bool l : locks) {
+		writePOD(out, l);
 	}
 	out.close();
 }

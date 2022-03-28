@@ -25,7 +25,12 @@ void writePOD(std::ostream& out, const T& t) {
 
 template<typename T>
 void readPOD(std::istream& in, T& t) {
-	in.read(reinterpret_cast<char*>(&t), sizeof(T));
+	T temp;
+	in.read(reinterpret_cast<char*>(&temp), sizeof(T));
+	if (in.eof()) {
+		return;
+	}
+	t = temp;
 }
 
 // Rotator uses ints instead of floats.  Floats are better.
@@ -54,6 +59,7 @@ private:
 	std::vector<GameState> history;
 	GameState latest;
 	std::vector<GameState> checkpoints;
+	std::vector<bool> locks;
 	size_t curCheckpoint = 0;
 	bool rewindMode = false;
 	bool freezeBall = false;
