@@ -35,6 +35,7 @@ Note: assumes default bindings from above.
 - `cpt_prev_checkpoint` / `cpt_next_checkpoint`: loads the previous/next saved checkpoint
 - `cpt_rand_checkpoint`: loads a random saved checkpoint
 - `cpt_lock_checkpoint`: locks/unlocks the current checkpoint to prevent/allow its deletion.
+- `cpt_mirror_state`: when frozen, mirrors car and ball to opposide side of field.
 - `cpt_freeze_ball`:
   - In rewind mode: unfreezes the player's car while keeping the ball frozen
   - While playing: freezes the ball without freezing the player's car

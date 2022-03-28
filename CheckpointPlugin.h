@@ -79,7 +79,7 @@ private:
 	bool resetOnGoal = false;
 	bool resetOnBallGround = false;
 	bool nextInsteadOfReset = false;
-	bool mirrorShot = false;
+	bool mirrorLoads = false;
 	bool randomizeLoads = false;
 
 	void addBind(std::string key, std::string cmd);

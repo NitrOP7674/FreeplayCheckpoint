@@ -95,7 +95,7 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_next_prev_when_frozen", "If set, ignore next/prev when not frozen", &ignorePNNotFrozen);
 
-	boolvar("cpt_mirror_shot", "If set, randomly mirror when loading checkpoints", &mirrorShot);
+	boolvar("cpt_mirror_loads", "If set, randomly mirror when loading checkpoints", &mirrorLoads);
 	boolvar("cpt_randomize_loads", "If set, load a random checkpoint instead of the latest", &randomizeLoads);
 
 	auto snapshotIntervalCV = cvarManager->registerCvar(
@@ -236,7 +236,7 @@ void CheckpointPlugin::onLoad()
 		}
 		locks[curCheckpoint] = !locks[curCheckpoint];
 		saveCheckpointFile();
-	}, "Saves/restores/removes a checkpoint", PERMISSION_ALL);
+	}, "Lock/unlock a checkpoint", PERMISSION_FREEPLAY);
 	
 	// Go to previous checkpoint.
 	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
@@ -279,6 +279,20 @@ void CheckpointPlugin::onLoad()
 		}
 		loadRandomCheckpoint();
 	}, "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
+
+	// Mirrors the current state.
+	cvarManager->registerNotifier("cpt_mirror_state", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		if (!rewindMode) {
+			return;
+		}
+		rewindState.atCheckpoint = false;
+		hasQuickCheckpoint = true;
+		quickCheckpoint = latest.mirror();
+		loadLatestCheckpoint();
+	}, "Mirrors the current frozen state", PERMISSION_FREEPLAY);
 
 	cvarManager->registerNotifier("cpt_freeze_ball", [this](std::vector<std::string> command) {
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
@@ -376,7 +390,7 @@ void CheckpointPlugin::onLoad()
 		loadGameState(quickCheckpoint);
 		hasQuickCheckpoint = true;
 		rewindState.justLoadedQuickCheckpoint = true;
-	}, "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_ALL);
+	}, "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
 
 	// Add default bindings.
 	registerBindingCVars();
@@ -427,7 +441,7 @@ void CheckpointPlugin::loadRandomCheckpoint() {
 
 void CheckpointPlugin::loadCurCheckpoint() {
 	auto checkpoint = checkpoints.at(curCheckpoint);
-	if (mirrorShot && rand() % 2 == 0) {
+	if (mirrorLoads && rand() % 2 == 0) {
 		checkpoint = checkpoint.mirror();
 	}
 	loadGameState(checkpoint);

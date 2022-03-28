@@ -51,7 +51,7 @@ void CheckpointPlugin::writeSettingsFile() {
 5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
 5|Max. Total Variance|cpt_variance_tot|0|50
 9|
-1|Randomly mirror when loading checkpoint|cpt_mirror_shot
+1|Randomly mirror when loading checkpoint|cpt_mirror_loads
 1|Load random checkpoint instead of latest|cpt_randomize_loads
 8|
 9|
