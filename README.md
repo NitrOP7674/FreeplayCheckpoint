@@ -53,6 +53,8 @@ Note: assumes default bindings from above.
   - KBM players should manually bind the cpt_ keys in the bindings section.
   - Controller players may hold the button they wish to bind and click the action they
     wish to bind to that button.
+  - Ignore prev/next/freeze ball when not frozen (recommended):
+    - Avoids interfering with bakkesmod default commands.
 - **Variance**:
   - When resuming play from frozen, apply randomness to the scenario.
 - **Randomly mirror when loading checkpoint**:
@@ -62,9 +64,8 @@ Note: assumes default bindings from above.
     of the latest one.
 - **Auto-reset checkpoint**:
   - Allows drilling a shot or running through shots like a training pack.
-- **Ignore cmds except freeze & do_checkpoint when not frozen**:
-  - Allows for binding dpad buttons to prev/next/freeze ball while not interfering with
-    bakkesmod default commands.
+- **Save File Name**:
+  - Sets the checkpoint save file; store different types of shots in different files.
 - **Clean History**:
   - When rewinding and restoring an old state, deletes history after that restored point.
 - **History Length**: amount of history to save

@@ -588,6 +588,10 @@ void CheckpointPlugin::record(ServerWrapper sw)
 		if ((resetOnGoal && sw.IsInGoal(ballLoc)) ||
 			(resetOnBallGround && ballLoc.Z < ballRad + 5)) {
 			if (nextInsteadOfReset && !hasQuickCheckpoint && checkpoints.size() > 0) {
+				if (randomizeLoads) {
+					loadRandomCheckpoint();
+					return;
+				}
 				curCheckpoint++;
 				if (curCheckpoint == checkpoints.size()) {
 					curCheckpoint = 0;

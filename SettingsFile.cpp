@@ -28,14 +28,14 @@ void CheckpointPlugin::writeSettingsFile() {
 0|  Next. Checkpoint (cpt_next_checkpoint) |cpt_capture_key cpt_next_checkpoint
 7|
 9| [ $cpt_next_checkpoint_key$ ]
-9|
 0|Freeze Ball/Unfreeze Car (cpt_freeze_ball)|cpt_capture_key cpt_freeze_ball
 7|
 9| [ $cpt_freeze_ball_key$ ]
+1|Ignore prev/next/freeze ball when not frozen (recommended)|cpt_next_prev_when_frozen
+9|
 0|          Mirror shot (cpt_mirror_state)          |cpt_capture_key cpt_mirror_state
 7|
 9| [ $cpt_mirror_state_key$ ]
-9|
 0|  Rewind & Fast Forward (cannot change)  |
 7|
 9| [ Steer Left & Right ]
@@ -70,7 +70,9 @@ void CheckpointPlugin::writeSettingsFile() {
 9|
 9|Other options:
 8|
-1|Ignore cmds except freeze & do_checkpoint when not frozen (recommended)|cpt_next_prev_when_frozen
+9|Save File Name:
+7|
+12||cpt_filename
 1|Clean History -- Deletes future history points when resuming|cpt_clean_history
 5|History Length (seconds)|cpt_history_length|10|120
 5|History Refresh Rate (ms)|cpt_snapshot_interval|1|10
