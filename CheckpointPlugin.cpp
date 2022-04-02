@@ -98,6 +98,8 @@ void CheckpointPlugin::onLoad()
 	boolvar("cpt_mirror_loads", "If set, randomly mirror when loading checkpoints", &mirrorLoads);
 	boolvar("cpt_randomize_loads", "If set, load a random checkpoint instead of the latest", &randomizeLoads);
 
+	cvarManager->registerCvar("cpt_allow_delete_all", "0", "Enables the delete all button", false, true, 0, true, 1, false);
+
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
 	snapshotIntervalCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
@@ -279,6 +281,20 @@ void CheckpointPlugin::onLoad()
 		}
 		loadRandomCheckpoint();
 	}, "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
+
+	cvarManager->registerNotifier("cpt_delete_all", [this](std::vector<std::string> command) {
+		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+			return;
+		}
+		if (!cvarManager->getCvar("cpt_allow_delete_all").getBoolValue()) {
+			return;
+		}
+		cvarManager->getCvar("cpt_allow_delete_all").setValue("0");
+		checkpoints.resize(0);
+		locks.resize(0);
+		curCheckpoint = 0;
+		saveCheckpointFile();
+		}, "Deletes ALL checkpoints", PERMISSION_FREEPLAY);
 
 	// Mirrors the current state.
 	cvarManager->registerNotifier("cpt_mirror_state", [this](std::vector<std::string> command) {

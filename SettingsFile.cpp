@@ -73,7 +73,11 @@ void CheckpointPlugin::writeSettingsFile() {
 9|Save File Name:
 7|
 12||cpt_filename
-1|Clean History -- Deletes future history points when resuming|cpt_clean_history
+0|Delete ALL Shots (even locked shots; not undo-able!)|cpt_delete_all
+7|
+1|Enable Delete ALL Shots Button|cpt_allow_delete_all
+9|
+1|Clean History -- Erases future history points when resuming|cpt_clean_history
 5|History Length (seconds)|cpt_history_length|10|120
 5|History Refresh Rate (ms)|cpt_snapshot_interval|1|10
 9|
