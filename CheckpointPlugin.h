@@ -52,7 +52,17 @@ struct RewindState {
 class CheckpointPlugin : public BakkesMod::Plugin::BakkesModPlugin {
 	//Boilerplate
 	virtual void onLoad();
+	void copyShot(std::vector<std::string> command);
+	void mirrorState(std::vector<std::string> command);
+	void deleteAllCheckpoints(std::vector<std::string> command);
+	void randCheckpoint(std::vector<std::string> command);
+	void pasteShot(std::vector<std::string> command);
+	void freezeBallUnfreezeCar(std::vector<std::string> command);
 	virtual void onUnload();
+	void doCheckpoint(std::vector<std::string> command);
+	void lockCheckpoint(std::vector<std::string> command);
+	void prevCheckpoint(std::vector<std::string> command);
+	void nextCheckpoint(std::vector<std::string> command);
 
 private:
 	RewindState rewindState;

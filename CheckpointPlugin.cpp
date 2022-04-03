@@ -166,13 +166,220 @@ void CheckpointPlugin::onLoad()
 
 	// If in play mode, load the latest checkpoint / quick checkpoint.
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
-	cvarManager->registerNotifier("cpt_do_checkpoint", [this](std::vector<std::string> command) {
+	cvarManager->registerNotifier("cpt_do_checkpoint", std::bind(&CheckpointPlugin::doCheckpoint, this, _1), "Saves/restores/removes a checkpoint", PERMISSION_ALL);
+
+	cvarManager->registerNotifier("cpt_lock_checkpoint", std::bind(&CheckpointPlugin::lockCheckpoint, this, _1), "Lock/unlock a checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_prev_checkpoint", std::bind(&CheckpointPlugin::prevCheckpoint, this, _1), "Loads the previous checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_next_checkpoint", std::bind(&CheckpointPlugin::nextCheckpoint, this, _1), "Loads the next checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_rand_checkpoint", std::bind(&CheckpointPlugin::randCheckpoint, this, _1), "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_delete_all", std::bind(&CheckpointPlugin::deleteAllCheckpoints, this, _1), "Deletes ALL checkpoints", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_mirror_state", std::bind(&CheckpointPlugin::mirrorState, this, _1), "Mirrors the current frozen state", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_freeze_ball", std::bind(&CheckpointPlugin::freezeBallUnfreezeCar, this, _1), "Loads the next checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_copy", std::bind(&CheckpointPlugin::copyShot, this, _1), "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_paste", std::bind(&CheckpointPlugin::pasteShot, this, _1), "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
+
+	// Add default bindings.
+	registerBindingCVars();
+
+	// Draw the checkpoint or notification about checkpoint deletion.
+	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
+
+	writeSettingsFile();
+}
+
+void CheckpointPlugin::copyShot(std::vector<std::string> command) {
+	std::string output = "";
+	if (gameWrapper->IsInReplay()) {
+		std::unique_ptr<GameState> gs = getReplayGameState();
+		if (gs == nullptr) {
+			return;
+		}
+		output = gs->toString();
+	} else if (rewindMode) {
+		cvarManager->log("Copying current position");
+		output = latest.toString();
+	} else if (hasQuickCheckpoint) {
+		cvarManager->log("Copying quick checkpoint");
+		output = quickCheckpoint.toString();
+	} else if (checkpoints.size() > 0) {
+		cvarManager->log("Copying checkpoint " + std::to_string(curCheckpoint + 1));
+		output = checkpoints.at(curCheckpoint).toString();
+	} else {
+		cvarManager->log("No checkpoint to copy!");
+		return;
+	}
+	output = "cpv1" + output + ".";
+	OpenClipboard(nullptr);
+	EmptyClipboard();
+	HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, output.size() + 1);
+	if (hg == nullptr) {
+		cvarManager->log("Error copying to clipboard!");
+		CloseClipboard();
+		return;
+	}
+	LPVOID lptstrCopy = GlobalLock(hg);
+	if (lptstrCopy == nullptr) {
+		cvarManager->log("Error copying to clipboard!");
+		CloseClipboard();
+		return;
+	}
+	memcpy(lptstrCopy, output.c_str(), output.size() + 1);
+	GlobalUnlock(hg);
+	SetClipboardData(CF_TEXT, hg);
+	CloseClipboard();
+	GlobalFree(hg);
+	cvarManager->log("Data copied to clipboard!");
+	log("Written to clipboard: " + output);
+}
+
+void CheckpointPlugin::pasteShot(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		return;
+	}
+	OpenClipboard(nullptr);
+	HANDLE hData = GetClipboardData(CF_TEXT);
+	if (hData == nullptr) {
+		cvarManager->log("Error reading clipboard!");
+		return;
+	}
+	char* pszText = static_cast<char*>(GlobalLock(hData));
+	if (pszText == nullptr) {
+		cvarManager->log("Error reading clipboard!");
+		return;
+	}
+	std::string input(pszText);
+	GlobalUnlock(hData);
+	CloseClipboard();
+	log("Read from clipboard: " + input);
+	if (input.substr(0, 4) != "cpv1" || input[input.size() - 1] != '.') {
+		cvarManager->log("Malformed checkpoint in clipboard: " + input);
+		return;
+	}
+	quickCheckpoint = GameState(input.substr(4, input.size() - 5));
+	loadGameState(quickCheckpoint);
+	hasQuickCheckpoint = true;
+	rewindState.justLoadedQuickCheckpoint = true;
+}
+
+void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
+		return;
+	}
+	if (rewindMode) {
+		freezeBall = true;  // takes us out of rewind mode
+		return;
+	}
+	if (freezeBall) {
+		freezeBall = false;
+		latest.car = history.back().car;
+		latest.apply(gameWrapper->GetGameEventAsServer());
+		quickCheckpoint = latest;
+		hasQuickCheckpoint = true;
+		return;
+	}
+	if (ignorePNNotFrozen) {
+		return;
+	}
+	latest = history.back();
+	latest.apply(gameWrapper->GetGameEventAsServer());
+	freezeBall = true;
+}
+
+void CheckpointPlugin::mirrorState(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		return;
+	}
+	if (!rewindMode) {
+		return;
+	}
+	rewindState.atCheckpoint = false;
+	hasQuickCheckpoint = true;
+	quickCheckpoint = latest.mirror();
+	loadLatestCheckpoint();
+}
+
+void CheckpointPlugin::deleteAllCheckpoints(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		return;
+	}
+	if (!cvarManager->getCvar("cpt_allow_delete_all").getBoolValue()) {
+		return;
+	}
+	cvarManager->getCvar("cpt_allow_delete_all").setValue("0");
+	checkpoints.resize(0);
+	locks.resize(0);
+	curCheckpoint = 0;
+	saveCheckpointFile();
+}
+
+void CheckpointPlugin::randCheckpoint(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		return;
+	}
+	loadRandomCheckpoint();
+}
+
+void CheckpointPlugin::prevCheckpoint(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
+		return;
+	}
+	if (ignorePNNotFrozen && !rewindMode) {
+		return;
+	}
+	if (!rewindState.justDeletedCheckpoint) {
+		// If you just deleted a checkpoint, prev should go one prior to
+		// the deleted one (the current one).
+		if (curCheckpoint == 0) {
+			curCheckpoint = checkpoints.size() - 1;
+		} else {
+			curCheckpoint--;
+		}
+	}
+	loadCurCheckpoint();
+}
+
+void CheckpointPlugin::nextCheckpoint(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
+		return;
+	}
+	if (ignorePNNotFrozen && !rewindMode) {
+		return;
+	}
+	curCheckpoint++;
+	if (curCheckpoint == checkpoints.size()) {
+		curCheckpoint = 0;
+	}
+	loadCurCheckpoint();
+}
+
+void CheckpointPlugin::lockCheckpoint(std::vector<std::string> command) {
+	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+		return;
+	}
+	if (!rewindMode || !rewindState.atCheckpoint) {
+		return;
+	}
+	rewindState.deleting = false;
+	if (locks.size() <= curCheckpoint) {
+		locks.resize(curCheckpoint + 1);
+	}
+	if (locks[curCheckpoint]) {
+		log("at cpt; unlocking: " + std::to_string(curCheckpoint + 1));
+	} else {
+		log("at cpt; locking: " + std::to_string(curCheckpoint + 1));
+	}
+	locks[curCheckpoint] = !locks[curCheckpoint];
+	saveCheckpointFile();
+}
+
+void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
+	{
 		if (gameWrapper->IsInReplay()) {
 			std::unique_ptr<GameState> gs = getReplayGameState();
 			if (gs == nullptr) {
 				return;
 			}
-			cvarManager->log("adding checkpoint " + std::to_string(checkpoints.size()+1));
+			cvarManager->log("adding checkpoint " + std::to_string(checkpoints.size() + 1));
 			checkpoints.push_back(*gs);
 			saveCheckpointFile();
 			return;
@@ -199,7 +406,7 @@ void CheckpointPlugin::onLoad()
 				return;
 			}
 			rewindState.deleting = false;
-			log("at cpt; removing: " + std::to_string(curCheckpoint+1));
+			log("at cpt; removing: " + std::to_string(curCheckpoint + 1));
 			checkpoints.erase(checkpoints.begin() + curCheckpoint);
 			if (locks.size() > curCheckpoint) {
 				locks.erase(locks.begin() + curCheckpoint);
@@ -211,210 +418,13 @@ void CheckpointPlugin::onLoad()
 			return;
 		}
 		// Add a new checkpoint here.
-		log("adding checkpoint " + std::to_string(checkpoints.size()+1));
+		log("adding checkpoint " + std::to_string(checkpoints.size() + 1));
 		curCheckpoint = checkpoints.size();
 		checkpoints.push_back(latest);
 		rewindState.atCheckpoint = true;
 		rewindState.justDeletedCheckpoint = false;
 		saveCheckpointFile();
-	}, "Saves/restores/removes a checkpoint", PERMISSION_ALL);
-
-	// "Locks" or "unlocks" a checkpoint to prevent/allow its removal.
-	cvarManager->registerNotifier("cpt_lock_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-			return;
-		}
-		if (!rewindMode || !rewindState.atCheckpoint) {
-			return;
-		}
-		rewindState.deleting = false;
-		if (locks.size() <= curCheckpoint) {
-			locks.resize(curCheckpoint + 1);
-		}
-		if (locks[curCheckpoint]) {
-			log("at cpt; unlocking: " + std::to_string(curCheckpoint + 1));
-		} else {
-			log("at cpt; locking: " + std::to_string(curCheckpoint + 1));
-		}
-		locks[curCheckpoint] = !locks[curCheckpoint];
-		saveCheckpointFile();
-	}, "Lock/unlock a checkpoint", PERMISSION_FREEPLAY);
-	
-	// Go to previous checkpoint.
-	cvarManager->registerNotifier("cpt_prev_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
-			return;
-		}
-		if (ignorePNNotFrozen && !rewindMode) {
-			return;
-		}
-		if (!rewindState.justDeletedCheckpoint) {
-			// If you just deleted a checkpoint, prev should go one prior to
-			// the deleted one (the current one).
-			if (curCheckpoint == 0) {
-				curCheckpoint = checkpoints.size() - 1;
-			} else {
-				curCheckpoint--;
-			}
-		}
-		loadCurCheckpoint();
-	}, "Loads the previous checkpoint", PERMISSION_FREEPLAY);
-
-	// Go to next checkpoint.
-	cvarManager->registerNotifier("cpt_next_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
-			return;
-		}
-		if (ignorePNNotFrozen && !rewindMode) {
-			return;
-		}
-		curCheckpoint++;
-		if (curCheckpoint == checkpoints.size()) {
-			curCheckpoint = 0;
-		}
-		loadCurCheckpoint();
-	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
-
-	cvarManager->registerNotifier("cpt_rand_checkpoint", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-			return;
-		}
-		loadRandomCheckpoint();
-	}, "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
-
-	cvarManager->registerNotifier("cpt_delete_all", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-			return;
-		}
-		if (!cvarManager->getCvar("cpt_allow_delete_all").getBoolValue()) {
-			return;
-		}
-		cvarManager->getCvar("cpt_allow_delete_all").setValue("0");
-		checkpoints.resize(0);
-		locks.resize(0);
-		curCheckpoint = 0;
-		saveCheckpointFile();
-		}, "Deletes ALL checkpoints", PERMISSION_FREEPLAY);
-
-	// Mirrors the current state.
-	cvarManager->registerNotifier("cpt_mirror_state", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-			return;
-		}
-		if (!rewindMode) {
-			return;
-		}
-		rewindState.atCheckpoint = false;
-		hasQuickCheckpoint = true;
-		quickCheckpoint = latest.mirror();
-		loadLatestCheckpoint();
-	}, "Mirrors the current frozen state", PERMISSION_FREEPLAY);
-
-	cvarManager->registerNotifier("cpt_freeze_ball", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
-			return;
-		}
-		if (rewindMode) {
-			freezeBall = true;  // takes us out of rewind mode
-			return;
-		}
-		if (freezeBall) {
-			freezeBall = false;
-			latest.car = history.back().car;
-			latest.apply(gameWrapper->GetGameEventAsServer());
-			quickCheckpoint = latest;
-			hasQuickCheckpoint = true;
-			return;
-		}
-		if (ignorePNNotFrozen) {
-			return;
-		}
-		latest = history.back();
-		latest.apply(gameWrapper->GetGameEventAsServer());
-		freezeBall = true;
-	}, "Loads the next checkpoint", PERMISSION_FREEPLAY);
-
-	cvarManager->registerNotifier("cpt_copy", [this](std::vector<std::string> command) {
-		std::string output = "";
-		if (gameWrapper->IsInReplay()) {
-			std::unique_ptr<GameState> gs = getReplayGameState();
-			if (gs == nullptr) {
-				return;
-			}
-			output = gs->toString();
-		} else if (rewindMode) {
-			cvarManager->log("Copying current position");
-			output = latest.toString();
-		} else if (hasQuickCheckpoint) {
-			cvarManager->log("Copying quick checkpoint");
-			output = quickCheckpoint.toString();
-		} else if (checkpoints.size() > 0) {
-			cvarManager->log("Copying checkpoint " + std::to_string(curCheckpoint+1));
-			output = checkpoints.at(curCheckpoint).toString();
-		} else {
-			cvarManager->log("No checkpoint to copy!");
-			return;
-		}
-		output = "cpv1" + output + ".";
-		OpenClipboard(nullptr);
-		EmptyClipboard();
-		HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, output.size()+1);
-		if (hg == nullptr) {
-			cvarManager->log("Error copying to clipboard!");
-			CloseClipboard();
-			return;
-		}
-		LPVOID lptstrCopy = GlobalLock(hg);
-		if (lptstrCopy == nullptr) {
-			cvarManager->log("Error copying to clipboard!");
-			CloseClipboard();
-			return;
-		}
-		memcpy(lptstrCopy, output.c_str(), output.size()+1);
-		GlobalUnlock(hg);
-		SetClipboardData(CF_TEXT, hg);
-		CloseClipboard();
-		GlobalFree(hg);
-		cvarManager->log("Data copied to clipboard!");
-		log("Written to clipboard: " + output);
-	}, "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
-
-	cvarManager->registerNotifier("cpt_paste", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-			return;
-		}
-		OpenClipboard(nullptr);
-		HANDLE hData = GetClipboardData(CF_TEXT);
-		if (hData == nullptr) {
-			cvarManager->log("Error reading clipboard!");
-			return;
-		}
-		char* pszText = static_cast<char*>(GlobalLock(hData));
-		if (pszText == nullptr) {
-			cvarManager->log("Error reading clipboard!");
-			return;
-		}
-		std::string input(pszText);
-		GlobalUnlock(hData);
-		CloseClipboard();
-		log("Read from clipboard: " + input);
-		if (input.substr(0, 4) != "cpv1" || input[input.size() - 1] != '.') {
-			cvarManager->log("Malformed checkpoint in clipboard: " + input);
-			return;
-		}
-		quickCheckpoint = GameState(input.substr(4, input.size() - 5));
-		loadGameState(quickCheckpoint);
-		hasQuickCheckpoint = true;
-		rewindState.justLoadedQuickCheckpoint = true;
-	}, "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
-
-	// Add default bindings.
-	registerBindingCVars();
-
-	// Draw the checkpoint or notification about checkpoint deletion.
-	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
-
-	writeSettingsFile();
+	}
 }
 
 void CheckpointPlugin::registerVarianceCVars() {
