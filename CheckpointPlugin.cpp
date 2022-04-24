@@ -83,6 +83,13 @@ std::unique_ptr<GameState> CheckpointPlugin::getReplayGameState() {
 	return nullptr;
 }
 
+void CheckpointPlugin::setFrozen(bool car, bool ball) {
+	rewindMode = car;
+	freezeBall = ball;
+	cvarManager->getCvar("cpt_car_frozen").setValue(car);
+	cvarManager->getCvar("cpt_ball_frozen").setValue(ball);
+}
+
 void CheckpointPlugin::onLoad()
 {
 	boolvar("cpt_clean_history", "If set, deletes history after the current point when exiting rewind mode", &deleteFutureHistory);
@@ -97,6 +104,8 @@ void CheckpointPlugin::onLoad()
 	boolvar("cpt_ignore_next", "If set, ignore next when not frozen", &ignorePrev);
 	boolvar("cpt_ignore_prev", "If set, ignore prev when not frozen", &ignoreNext);
 	boolvar("cpt_ignore_freeze_ball", "If set, ignore freeze ball when not frozen", &ignoreFreezeBall);
+
+	// Migration from cpt_next_prev_when_frozen to split variables.
 	if (ignorePNNotFrozen) {
 		cvarManager->getCvar("cpt_next_prev_when_frozen").setValue(false);
 		cvarManager->getCvar("cpt_ignore_prev").setValue(true);
@@ -109,13 +118,16 @@ void CheckpointPlugin::onLoad()
 
 	cvarManager->registerCvar("cpt_allow_delete_all", "0", "Enables the delete all button", false, true, 0, true, 1, false);
 
+	cvarManager->registerCvar("cpt_car_frozen", "0", "Set when the car is frozen; read-only", false, true, 0, true, 1, false);
+	cvarManager->registerCvar("cpt_ball_frozen", "0", "Set when the ball is frozen; read-only", false, true, 0, true, 1, false);
+
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
 	snapshotIntervalCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
 		snapshotInterval = now.getIntValue()/100.0f;
 		maxHistory = int(historyTime / snapshotInterval);
 		history.resize(0);
-		rewindMode = false;
+		setFrozen(false, false);
 		dodgeExpiration = 0.0;
 	});
 	snapshotIntervalCV.notify();
@@ -134,7 +146,7 @@ void CheckpointPlugin::onLoad()
 	auto filenameCV = cvarManager->registerCvar(
 		"cpt_filename", static_cast<std::string>(DEFAULT_SAVE_FILE_NAME), "Sets the filename to use for saved checkpoints", true, false, 0, false, 0, true);
 	filenameCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
-		rewindMode = false;
+		setFrozen(false, false);
 		curCheckpoint = 0;
 		loadCheckpointFile();
 	});
@@ -152,7 +164,7 @@ void CheckpointPlugin::onLoad()
 	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState",
 		[this](std::string eventName) {
 			playingFromCheckpoint = false;
-			rewindMode = false;
+			setFrozen(false, false);
 			dodgeExpiration = 0.0;
 		});
 
@@ -275,11 +287,11 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 		return;
 	}
 	if (rewindMode) {
-		freezeBall = true;  // takes us out of rewind mode
+		setFrozen(false, true);
 		return;
 	}
 	if (freezeBall) {
-		freezeBall = false;
+		setFrozen(false, false);
 		latest.car = history.back().car;
 		latest.apply(gameWrapper->GetGameEventAsServer());
 		quickCheckpoint = latest;
@@ -291,7 +303,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 	}
 	latest = history.back();
 	latest.apply(gameWrapper->GetGameEventAsServer());
-	freezeBall = true;
+	setFrozen(false, true);
 }
 
 void CheckpointPlugin::mirrorState(std::vector<std::string> command) {
@@ -490,8 +502,7 @@ void CheckpointPlugin::loadGameState(const GameState &state) {
 	state.apply(sw);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
-	rewindMode = true;
-	freezeBall = false;
+	setFrozen(true, true);
 	rewindState.atCheckpoint = false;
 	hasQuickCheckpoint = false;
 	rewindState.justDeletedCheckpoint = false;
@@ -512,33 +523,26 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 	}
 
 	if (rewindMode) {
-		rewind(sw);
-		if (freezeBall) {
-			rewindMode = false;
-		}
-		if (rewindMode) {
-			latest.apply(sw);
-		} else {
-			// Exited rewind mode.
-			GameState now(sw);
-			applyVariance(now).apply(sw);
+		if (rewind(sw)) {
+			applyVariance(latest).apply(sw);
 		}
 	} else {
 		record(sw);
 	}
 }
 
-void CheckpointPlugin::rewind(ServerWrapper sw) {
+// Returns true if we need to apply the state again.
+bool CheckpointPlugin::rewind(ServerWrapper sw) {
 	ControllerInput ci = sw.GetCars().Get(0).GetInput();
 
 	float currentTime = sw.GetSecondsElapsed();
 	float elapsed = std::min(currentTime - lastRewindTime, 0.03f);
 	if (elapsed < 0) {
 		lastRewindTime = currentTime;
-		return;
+		return false;  // Ignored whatever inputs may have happened to exit mode; do not apply state.
 	}
 	if (elapsed < 0.01f) {
-		return;
+		return false;  // Ignored whatever inputs may have happened to exit mode; do not apply state.
 	}
 	lastRewindTime = currentTime;
 	int buttonsDown = (abs(ci.Throttle) > 0.1 ? 0x01 : 0) |
@@ -552,7 +556,7 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (buttonsDown != 0) {
 		if (buttonsDown > rewindState.buttonsDown && currentTime - lastRecordTime > 0.1f) {
 			log("resuming...");
-			rewindMode = false;
+			setFrozen(false, false);
 			lastRecordTime = currentTime;
 			dodgeExpiration = (latest.car.hasDodge && latest.car.lastJumped != -1) ? (currentTime + MAX_DODGE_TIME - latest.car.lastJumped) : 0;
 			if (!rewindState.atCheckpoint) {
@@ -566,15 +570,16 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 					history.erase(history.begin() + current, history.end());
 				}
 			}
+			return false; // Leaving rewind; do not apply state.
 		}
 		rewindState.buttonsDown = buttonsDown;
-		return;
+		return true; // Staying in rewind; apply state.
 	}
 	rewindState.buttonsDown = buttonsDown;
 
 	// Determine how much to rewind / advance time.
 	if (abs(ci.Steer) < .05f) { // Ignore slight input; keep current game state.
-		return;
+		return true; // Ignoring input; apply state.
 	}
 	rewindState.deleting = false;
 	if (ci.Steer < -.95 && rewindState.holdingFor <= 0) {
@@ -597,9 +602,10 @@ void CheckpointPlugin::rewind(ServerWrapper sw) {
 	if (current < (history.size() - 1) /* && NEED TO INTERPOLATE */) {
 		float advancePct = 1 - (historyOffset - floor(historyOffset));
 		latest = GameState(history.at(current), history.at(current+1), advancePct);
-		return;
+		return true; // Apply new state.
 	}
 	latest = history.at(current);
+	return true; // Apply new state.
 }
 
 void CheckpointPlugin::record(ServerWrapper sw)

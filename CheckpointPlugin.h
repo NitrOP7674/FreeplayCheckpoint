@@ -104,7 +104,7 @@ private:
 	void removeBindKeys(std::vector<std::string> params);
 	void applyBindKeys(std::vector<std::string> params);
 	GameState applyVariance(GameState& s);
-	void rewind(ServerWrapper sw);
+	bool rewind(ServerWrapper sw);
 	void loadCheckpointFile();
 	void saveCheckpointFile();
 	void Render(CanvasWrapper canvas);
@@ -116,6 +116,6 @@ private:
 	void log(std::string s);
 	void boolvar(std::string name, std::string desc, bool* var);
 	std::unique_ptr<GameState> getReplayGameState();
-	void registerIgnoreCVars();
+	void setFrozen(bool car, bool ball);
 	void writeSettingsFile();
 };
