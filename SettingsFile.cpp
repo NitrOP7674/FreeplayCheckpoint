@@ -25,13 +25,18 @@ void CheckpointPlugin::writeSettingsFile() {
 0|  Prev. Checkpoint (cpt_prev_checkpoint) |cpt_capture_key cpt_prev_checkpoint
 7|
 9| [ $cpt_prev_checkpoint_key$ ]
-0|  Next. Checkpoint (cpt_next_checkpoint) |cpt_capture_key cpt_next_checkpoint
+7|
+1|Ignore Unless Frozen##prev|cpt_ignore_prev
+0|  Next Checkpoint (cpt_next_checkpoint) |cpt_capture_key cpt_next_checkpoint
 7|
 9| [ $cpt_next_checkpoint_key$ ]
+7|
+1|Ignore Unless Frozen##next|cpt_ignore_next
 0|Freeze Ball/Unfreeze Car (cpt_freeze_ball)|cpt_capture_key cpt_freeze_ball
 7|
 9| [ $cpt_freeze_ball_key$ ]
-1|Ignore prev/next/freeze ball when not frozen (recommended)|cpt_next_prev_when_frozen
+7|
+1|Ignore Unless Frozen##fb|cpt_ignore_freeze_ball
 9|
 0|          Mirror shot (cpt_mirror_state)          |cpt_capture_key cpt_mirror_state
 7|

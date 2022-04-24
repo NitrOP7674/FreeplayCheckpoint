@@ -93,7 +93,16 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_debug", "If set, render debugging info", &debug);
 
-	boolvar("cpt_next_prev_when_frozen", "If set, ignore next/prev when not frozen", &ignorePNNotFrozen);
+	boolvar("cpt_next_prev_when_frozen", "LEGACY; DO NOT USE", &ignorePNNotFrozen);
+	boolvar("cpt_ignore_next", "If set, ignore next when not frozen", &ignorePrev);
+	boolvar("cpt_ignore_prev", "If set, ignore prev when not frozen", &ignoreNext);
+	boolvar("cpt_ignore_freeze_ball", "If set, ignore freeze ball when not frozen", &ignoreFreezeBall);
+	if (ignorePNNotFrozen) {
+		cvarManager->getCvar("cpt_next_prev_when_frozen").setValue(false);
+		cvarManager->getCvar("cpt_ignore_prev").setValue(true);
+		cvarManager->getCvar("cpt_ignore_next").setValue(true);
+		cvarManager->getCvar("cpt_ignore_freeze_ball").setValue(true);
+	}
 
 	boolvar("cpt_mirror_loads", "If set, randomly mirror when loading checkpoints", &mirrorLoads);
 	boolvar("cpt_randomize_loads", "If set, load a random checkpoint instead of the latest", &randomizeLoads);
@@ -277,7 +286,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 		hasQuickCheckpoint = true;
 		return;
 	}
-	if (ignorePNNotFrozen) {
+	if (ignoreFreezeBall) {
 		return;
 	}
 	latest = history.back();
@@ -323,7 +332,7 @@ void CheckpointPlugin::prevCheckpoint(std::vector<std::string> command) {
 	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 		return;
 	}
-	if (ignorePNNotFrozen && !rewindMode) {
+	if (ignorePrev && !rewindMode) {
 		return;
 	}
 	if (!rewindState.justDeletedCheckpoint) {
@@ -342,7 +351,7 @@ void CheckpointPlugin::nextCheckpoint(std::vector<std::string> command) {
 	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
 		return;
 	}
-	if (ignorePNNotFrozen && !rewindMode) {
+	if (ignoreNext && !rewindMode) {
 		return;
 	}
 	curCheckpoint++;

@@ -85,6 +85,9 @@ private:
 	// Settings:
 	bool deleteFutureHistory = false;
 	bool ignorePNNotFrozen = false;
+	bool ignorePrev = false;
+	bool ignoreNext = false;
+	bool ignoreFreezeBall = false;
 	bool debug = false;
 	bool resetOnGoal = false;
 	bool resetOnBallGround = false;
@@ -113,5 +116,6 @@ private:
 	void log(std::string s);
 	void boolvar(std::string name, std::string desc, bool* var);
 	std::unique_ptr<GameState> getReplayGameState();
+	void registerIgnoreCVars();
 	void writeSettingsFile();
 };
