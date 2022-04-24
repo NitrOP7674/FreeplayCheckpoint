@@ -157,6 +157,7 @@ CarState CarState::mirror() const {
 GameState::GameState() {
 	ball = ActorState();
 	car = CarState();
+	time = -1;
 }
 
 GameState::GameState(std::istream& in) {
@@ -171,6 +172,7 @@ GameState::GameState(std::istream& in) {
 	readPOD(in, car.boostAmount);
 	readPOD(in, car.hasDodge);
 	readPOD(in, car.lastJumped);
+	time = -1;
 }
 
 void GameState::write(std::ostream& out) const {
@@ -185,28 +187,48 @@ void GameState::write(std::ostream& out) const {
 	writePOD(out, car.boostAmount);
 	writePOD(out, car.hasDodge);
 	writePOD(out, car.lastJumped);
-
 }
 
-GameState::GameState(ServerWrapper sw) {
+GameState::GameState(std::shared_ptr<GameWrapper> gw) {
+	ServerWrapper sw = gw->GetGameEventAsServer();
 	ball = ActorState(sw.GetBall());
 	car = CarState(sw.GetGameCar());
+	if (gw->IsInCustomTraining()) {
+		time = gw->GetCurrentGameState().GetGameTimeRemaining();
+	} else {
+		time = -1;
+	}
 }
 
 GameState::GameState(CarWrapper cw, BallWrapper bw) {
 	ball = ActorState(bw);
 	car = CarState(cw);
+	time = -1;
 }
 
 // Returns the game state <percent (0-1.0)> way between lh and rh.
 GameState::GameState(const GameState &lh, const GameState &rh, float percent) {
 	ball = ActorState(lh.ball, rh.ball, percent);
 	car = CarState(lh.car, rh.car, percent);
+	if (lh.time != -1 && rh.time != -1) {
+		time = (lh.time + rh.time) / 2;
+	} else {
+		time = -1;
+	}
 }
 
-void GameState::apply(ServerWrapper sw) const {
+void GameState::apply(std::shared_ptr<GameWrapper> gw) const {
+	ServerWrapper sw = gw->GetGameEventAsServer();
 	if (sw.GetBall().IsNull() || sw.GetGameCar().IsNull()) {
 		return;
+	}
+	if (gw->IsInCustomTraining()) {
+		if (time == -1) {
+			// Don't allow loading non-CT state into CT.
+			return;
+		} else {
+			gw->GetCurrentGameState().SetGameTimeRemaining(time);
+		}
 	}
 	ball.apply(sw.GetBall());
 	car.apply(sw.GetGameCar());
@@ -278,6 +300,7 @@ GameState::GameState(const std::string enc) {
 	readPOD(stream, car.boostAmount);
 	readPOD(stream, car.hasDodge);
 	readPOD(stream, car.lastJumped);
+	time = -1;
 }
 
 const std::string GameState::toString() const {

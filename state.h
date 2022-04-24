@@ -49,16 +49,17 @@ class GameState {
 public:
 	ActorState ball;
 	CarState car;
+	float time; // -1 if not in a timed mode
 
 	GameState();
-	GameState(ServerWrapper sw);
+	GameState(std::shared_ptr<GameWrapper> gw);
 	GameState(CarWrapper cw, BallWrapper bw);
 	GameState(const GameState& lh, const GameState& rh, float percent);
 	GameState(std::istream& in);
 	GameState(std::string str);
 
 	void write(std::ostream& out) const;
-	void apply(ServerWrapper sw) const;
+	void apply(std::shared_ptr<GameWrapper> gw) const;
 	const std::string toString() const;
 	GameState mirror() const;
 };

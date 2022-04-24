@@ -178,12 +178,13 @@ void CheckpointPlugin::onLoad()
 
 	// Enter rewind mode.
 	cvarManager->registerNotifier("cpt_freeze", [this](std::vector<std::string> command) {
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
+		if ((!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining()) ||
+			gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
 			return;
 		}
 		latest = history.back();
 		loadGameState(latest);
-	}, "Activates rewind mode", PERMISSION_FREEPLAY);
+	}, "Activates rewind mode", PERMISSION_ALL);
 
 	// If in play mode, load the latest checkpoint / quick checkpoint.
 	// If in rewind mode, add a checkpoint or delete the current checkpoint.
@@ -195,7 +196,7 @@ void CheckpointPlugin::onLoad()
 	cvarManager->registerNotifier("cpt_rand_checkpoint", std::bind(&CheckpointPlugin::randCheckpoint, this, _1), "Restores a random saved checkpoint", PERMISSION_FREEPLAY);
 	cvarManager->registerNotifier("cpt_delete_all", std::bind(&CheckpointPlugin::deleteAllCheckpoints, this, _1), "Deletes ALL checkpoints", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_mirror_state", std::bind(&CheckpointPlugin::mirrorState, this, _1), "Mirrors the current frozen state", PERMISSION_FREEPLAY);
-	cvarManager->registerNotifier("cpt_freeze_ball", std::bind(&CheckpointPlugin::freezeBallUnfreezeCar, this, _1), "Loads the next checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_freeze_ball", std::bind(&CheckpointPlugin::freezeBallUnfreezeCar, this, _1), "Freezes/unfreezes the ball", PERMISSION_FREEPLAY);
 	cvarManager->registerNotifier("cpt_copy", std::bind(&CheckpointPlugin::copyShot, this, _1), "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_paste", std::bind(&CheckpointPlugin::pasteShot, this, _1), "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
 
@@ -254,7 +255,7 @@ void CheckpointPlugin::copyShot(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::pasteShot(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+	if (!gameWrapper->IsInFreeplay()) {
 		return;
 	}
 	OpenClipboard(nullptr);
@@ -293,7 +294,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 	if (freezeBall) {
 		setFrozen(false, false);
 		latest.car = history.back().car;
-		latest.apply(gameWrapper->GetGameEventAsServer());
+		latest.apply(gameWrapper);
 		quickCheckpoint = latest;
 		hasQuickCheckpoint = true;
 		return;
@@ -302,7 +303,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 		return;
 	}
 	latest = history.back();
-	latest.apply(gameWrapper->GetGameEventAsServer());
+	latest.apply(gameWrapper);
 	setFrozen(false, true);
 }
 
@@ -320,9 +321,6 @@ void CheckpointPlugin::mirrorState(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::deleteAllCheckpoints(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-		return;
-	}
 	if (!cvarManager->getCvar("cpt_allow_delete_all").getBoolValue()) {
 		return;
 	}
@@ -403,6 +401,13 @@ void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
 			cvarManager->log("adding checkpoint " + std::to_string(checkpoints.size() + 1));
 			checkpoints.push_back(*gs);
 			saveCheckpointFile();
+			return;
+		}
+		if (gameWrapper->IsInCustomTraining()) {
+			// Only support loading the quick checkpoint for now.
+			if (hasQuickCheckpoint) {
+				loadLatestCheckpoint();
+			}
 			return;
 		}
 		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
@@ -499,7 +504,7 @@ void CheckpointPlugin::loadGameState(const GameState &state) {
 	latest = state;
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
 	sw.PlayerResetTraining(); // In case there is a goal explosion in progress.
-	state.apply(sw);
+	state.apply(gameWrapper);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
 	setFrozen(true, true);
@@ -514,7 +519,7 @@ void CheckpointPlugin::loadGameState(const GameState &state) {
 
 void CheckpointPlugin::OnPreAsync(std::string funcName)
 {
-	if (!gameWrapper->IsInFreeplay()) {
+	if (!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining()) {
 		return;
 	}
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
@@ -524,7 +529,7 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 
 	if (rewindMode) {
 		if (rewind(sw)) {
-			applyVariance(latest).apply(sw);
+			applyVariance(latest).apply(gameWrapper);
 		}
 	} else {
 		record(sw);
@@ -667,7 +672,7 @@ void CheckpointPlugin::record(ServerWrapper sw)
 	if (history.size() == maxHistory) {
 		history.erase(history.begin());
 	}
-	history.emplace_back(sw);
+	history.emplace_back(gameWrapper);
 }
 
 void show(CanvasWrapper canvas, Vector2 *loc, std::string s) {
