@@ -1,3 +1,5 @@
+# Freeplay Checkpoint
+### Rewind, Save, and Restore Checkpoints in Freeplay, Replays, and Custom Training!
 <p align="center"><img src="banner.png" width="350"></p>
 
 **Setup:**
@@ -26,7 +28,7 @@ Note: assumes default bindings from above.
 
 **Command Reference:**
 
-- `cpt_freeze`: Activates rewind mode
+- `cpt_freeze`: activates rewind mode in Freeplay or Custom Training
 - `cpt_do_checkpoint`:
   - In rewind mode, not at a saved checkpoint: saves the current state as a checkpoint
   - In rewind mode, at a saved checkpoint: deletes the current checkpoint (press twice)
@@ -57,21 +59,32 @@ Note: assumes default bindings from above.
     - Avoids interfering with bakkesmod default commands.
 - **Variance**:
   - When resuming play from frozen, apply randomness to the scenario.
-- **Randomly mirror when loading checkpoint**:
-  - Randomly mirrors shots when loading to practice opposite angles.
-  **Load random checkpoint**:
-  - When not frozen and `cpt_do_checkpoint` is pressed, load a random checkpoint instead
-    of the latest one.
+  - **Randomly mirror when loading checkpoint**:
+    - Randomly mirrors shots when loading to practice opposite angles.
+  - **Load random checkpoint**:
+    - When not frozen and `cpt_do_checkpoint` is pressed, load a random checkpoint instead
+      of the latest one.
 - **Auto-reset checkpoint**:
   - Allows drilling a shot or running through shots like a training pack.
-- **Save File Name**:
-  - Sets the checkpoint save file; store different types of shots in different files.
-- **Clean History**:
-  - When rewinding and restoring an old state, deletes history after that restored point.
-- **History Length**: amount of history to save
-- **History Refresh Rate**:
-  - Interval between saved state points.  Set small for maximum smoothness in history data,
-    but at the possible expense of worse performance.
+- **Other Options**:
+  - **Save File Name**:
+    - Sets the checkpoint save file; store different types of shots in different files.
+  - **Delete ALL Shots**:
+    - Deletes every saved checkpoint in the current file, even locked shots.  Check the
+      "Enable" checkbox first to enable the button - there is no warning or confirmation
+      once this is checked.
+  - **Clean History**:
+    - When rewinding and restoring an old state, deletes history after that restored point.
+  - **History Length**: amount of history to save
+  - **History Refresh Rate**:
+    - Interval between saved state points.  Set small for maximum smoothness in history data,
+      but at the possible expense of worse performance.
+  - **Debug**:
+    - Shows some additional debugging data.  Probably not useful.
+    
+**Other CVars**
+- `cpt_car_frozen`/`cpt_ball_frozen`:
+  - These are set by this plugin whenever the car or ball or both are frozen in freeplay.
 
 **Uninstalling:**
 
@@ -81,3 +94,5 @@ in the settings pane.
 **Contact:**
 
 Feel free to submit feature requests or bugs on Github, or contact me on Discord at NitroP#7674.
+
+**Please read this document fully before contacting me about bugs.  Thank you!**
