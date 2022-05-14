@@ -55,6 +55,7 @@ Note: assumes default bindings from above.
   - KBM players should manually bind the cpt_ keys in the bindings section.
   - Controller players may hold the button they wish to bind and click the action they
     wish to bind to that button.
+  - Recommended: Do *not* bind cpt_checkpoint to the same button as "reset shot".
   - Ignore prev/next/freeze ball when not frozen (recommended):
     - Avoids interfering with bakkesmod default commands.
 - **Variance**:
