@@ -88,6 +88,7 @@ private:
 	bool ignorePrev = false;
 	bool ignoreNext = false;
 	bool ignoreFreezeBall = false;
+	bool disableTraining = false;
 	bool debug = false;
 	bool resetOnGoal = false;
 	bool resetOnBallGround = false;
@@ -118,4 +119,5 @@ private:
 	std::unique_ptr<GameState> getReplayGameState();
 	void setFrozen(bool car, bool ball);
 	void writeSettingsFile();
+	bool enabled();
 };

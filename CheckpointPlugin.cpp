@@ -104,6 +104,7 @@ void CheckpointPlugin::onLoad()
 	boolvar("cpt_ignore_next", "If set, ignore next when not frozen", &ignorePrev);
 	boolvar("cpt_ignore_prev", "If set, ignore prev when not frozen", &ignoreNext);
 	boolvar("cpt_ignore_freeze_ball", "If set, ignore freeze ball when not frozen", &ignoreFreezeBall);
+	boolvar("cpt_disable_training", "If set, disable in custom training", &disableTraining);
 
 	// Migration from cpt_next_prev_when_frozen to split variables.
 	if (ignorePNNotFrozen) {
@@ -178,8 +179,7 @@ void CheckpointPlugin::onLoad()
 
 	// Enter rewind mode.
 	cvarManager->registerNotifier("cpt_freeze", [this](std::vector<std::string> command) {
-		if ((!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining()) ||
-			gameWrapper->IsPaused() || history.size() == 0 || rewindMode) {
+		if (!enabled() || history.size() == 0 || rewindMode || gameWrapper->IsInReplay()) {
 			return;
 		}
 		latest = history.back();
@@ -207,6 +207,13 @@ void CheckpointPlugin::onLoad()
 	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
 
 	writeSettingsFile();
+}
+
+bool CheckpointPlugin::enabled() {
+	return gameWrapper->IsInReplay() || /* Replays may be paused when checkpoints are taken */
+		   (!gameWrapper->IsPaused() &&
+			(gameWrapper->IsInFreeplay() ||
+		     (gameWrapper->IsInCustomTraining() && !disableTraining)));
 }
 
 void CheckpointPlugin::copyShot(std::vector<std::string> command) {
@@ -393,6 +400,9 @@ void CheckpointPlugin::lockCheckpoint(std::vector<std::string> command) {
 
 void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
 	{
+		if (!enabled()) {
+			return;
+		}
 		if (gameWrapper->IsInReplay()) {
 			std::unique_ptr<GameState> gs = getReplayGameState();
 			if (gs == nullptr) {
@@ -408,9 +418,6 @@ void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
 			if (hasQuickCheckpoint) {
 				loadLatestCheckpoint();
 			}
-			return;
-		}
-		if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
 			return;
 		}
 		if (!rewindMode) {

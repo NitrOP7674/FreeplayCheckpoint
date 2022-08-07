@@ -52,6 +52,7 @@ void CheckpointPlugin::writeSettingsFile() {
 0| Remove Bindings  |cpt_remove_bindings
 7|
 9|:(
+1|Disable binds in custom training|cpt_disable_training
 8|
 9|
 9|Variance - applied when leaving rewind mode
