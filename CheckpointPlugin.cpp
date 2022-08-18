@@ -105,6 +105,7 @@ void CheckpointPlugin::onLoad()
 	boolvar("cpt_ignore_prev", "If set, ignore prev when not frozen", &ignoreNext);
 	boolvar("cpt_ignore_freeze_ball", "If set, ignore freeze ball when not frozen", &ignoreFreezeBall);
 	boolvar("cpt_disable_training", "If set, disable in custom training", &disableTraining);
+	boolvar("cpt_disable_workshop", "If set, disable in workshop", &disableWorkshop);
 
 	// Migration from cpt_next_prev_when_frozen to split variables.
 	if (ignorePNNotFrozen) {
@@ -210,10 +211,32 @@ void CheckpointPlugin::onLoad()
 }
 
 bool CheckpointPlugin::enabled() {
-	return gameWrapper->IsInReplay() || /* Replays may be paused when checkpoints are taken */
-		   (!gameWrapper->IsPaused() &&
-			(gameWrapper->IsInFreeplay() ||
-		     (gameWrapper->IsInCustomTraining() && !disableTraining)));
+	if (gameWrapper->IsInReplay()) {
+		// Replays may be paused when checkpoints are taken.
+		return true;
+	}
+	if (gameWrapper->IsPaused()) {
+		// Don't allow checkpoint operations while paused.
+		return false;
+	}
+	if (!disableTraining && gameWrapper->IsInCustomTraining()) {
+		return true;
+	}
+	if (!gameWrapper->IsInFreeplay()) {
+		return false;
+	}
+	return !disableWorkshop || PlaylistIds(gameWrapper->GetGameEventAsServer().GetPlaylist().GetPlaylistId()) != PlaylistIds::Workshop;
+}
+
+bool CheckpointPlugin::enabledLoads() {
+	if (gameWrapper->IsPaused()) {
+		// Don't allow checkpoint operations while paused.
+		return false;
+	}
+	if (!gameWrapper->IsInFreeplay()) {
+		return false;
+	}
+	return !disableWorkshop || PlaylistIds(gameWrapper->GetGameEventAsServer().GetPlaylist().GetPlaylistId()) != PlaylistIds::Workshop;
 }
 
 void CheckpointPlugin::copyShot(std::vector<std::string> command) {
@@ -262,7 +285,7 @@ void CheckpointPlugin::copyShot(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::pasteShot(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay()) {
+	if (!enabledLoads()) {
 		return;
 	}
 	OpenClipboard(nullptr);
@@ -291,7 +314,7 @@ void CheckpointPlugin::pasteShot(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || history.size() == 0) {
+	if (!enabledLoads() || history.size() == 0) {
 		return;
 	}
 	if (rewindMode) {
@@ -315,10 +338,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::mirrorState(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-		return;
-	}
-	if (!rewindMode) {
+	if (!enabledLoads() || !rewindMode) {
 		return;
 	}
 	rewindState.atCheckpoint = false;
@@ -339,14 +359,14 @@ void CheckpointPlugin::deleteAllCheckpoints(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::randCheckpoint(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+	if (!enabledLoads()) {
 		return;
 	}
 	loadRandomCheckpoint();
 }
 
 void CheckpointPlugin::prevCheckpoint(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
+	if (!enabledLoads() || checkpoints.size() == 0) {
 		return;
 	}
 	if (ignorePrev && !rewindMode) {
@@ -690,7 +710,7 @@ void show(CanvasWrapper canvas, Vector2 *loc, std::string s) {
 }
 
 void CheckpointPlugin::Render(CanvasWrapper canvas) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
+	if (!enabledLoads()) {
 		return;
 	}
 	if (debug) {

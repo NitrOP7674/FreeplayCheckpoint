@@ -53,6 +53,7 @@ void CheckpointPlugin::writeSettingsFile() {
 7|
 9|:(
 1|Disable binds in custom training|cpt_disable_training
+1|Disable binds in workshop|cpt_disable_workshop
 8|
 9|
 9|Variance - applied when leaving rewind mode

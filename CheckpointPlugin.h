@@ -89,6 +89,7 @@ private:
 	bool ignoreNext = false;
 	bool ignoreFreezeBall = false;
 	bool disableTraining = false;
+	bool disableWorkshop = false;
 	bool debug = false;
 	bool resetOnGoal = false;
 	bool resetOnBallGround = false;
@@ -120,4 +121,5 @@ private:
 	void setFrozen(bool car, bool ball);
 	void writeSettingsFile();
 	bool enabled();
+	bool enabledLoads();
 };
