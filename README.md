@@ -58,6 +58,8 @@ Note: assumes default bindings from above.
   - Recommended: Do *not* bind cpt_checkpoint to the same button as "reset shot".
   - Ignore prev/next/freeze ball when not frozen (recommended):
     - Avoids interfering with bakkesmod default commands.
+  - Disable binds in custom training: ignore commands in custom training
+  - Disable binds in workshop: ignore commands on workshop maps
 - **Variance**:
   - When resuming play from frozen, apply randomness to the scenario.
   - **Randomly mirror when loading checkpoint**:
