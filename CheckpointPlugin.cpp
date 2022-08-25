@@ -385,7 +385,7 @@ void CheckpointPlugin::prevCheckpoint(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::nextCheckpoint(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused() || checkpoints.size() == 0) {
+	if (!enabledLoads() || checkpoints.size() == 0) {
 		return;
 	}
 	if (ignoreNext && !rewindMode) {
@@ -399,10 +399,7 @@ void CheckpointPlugin::nextCheckpoint(std::vector<std::string> command) {
 }
 
 void CheckpointPlugin::lockCheckpoint(std::vector<std::string> command) {
-	if (!gameWrapper->IsInFreeplay() || gameWrapper->IsPaused()) {
-		return;
-	}
-	if (!rewindMode || !rewindState.atCheckpoint) {
+	if (gameWrapper->IsPaused() || !rewindMode || !rewindState.atCheckpoint) {
 		return;
 	}
 	rewindState.deleting = false;
