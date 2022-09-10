@@ -524,10 +524,13 @@ void CheckpointPlugin::loadCurCheckpoint() {
 	rewindState.atCheckpoint = true;
 }
 
-void CheckpointPlugin::loadGameState(const GameState &state) {
+void CheckpointPlugin::loadGameState(const GameState& state) {
 	latest = state;
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
-	state.apply(gameWrapper);
+	if (cvarManager->getCvar("sv_soccar_enablegoal").getBoolValue()) {
+		sw.PlayerResetTraining(); // In case a goal was just scored, there may be no ball.
+	}
+	latest.apply(gameWrapper);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
 	setFrozen(true, true);
