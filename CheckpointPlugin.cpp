@@ -527,7 +527,6 @@ void CheckpointPlugin::loadCurCheckpoint() {
 void CheckpointPlugin::loadGameState(const GameState &state) {
 	latest = state;
 	ServerWrapper sw = gameWrapper->GetGameEventAsServer();
-	sw.PlayerResetTraining(); // In case there is a goal explosion in progress.
 	state.apply(gameWrapper);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;

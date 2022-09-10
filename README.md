@@ -13,6 +13,8 @@
 Alternatively, or for KBM users: assign the `cpt_` commands (listed in the Command
 Reference section below) as desired in the "Bindings" tab.
 
+It is recommended to disable goal scoring in bakkesmod while using this plugin.
+
 **Basic Usage:**
 
 Note: assumes default bindings from above.
