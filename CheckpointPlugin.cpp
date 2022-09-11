@@ -106,6 +106,7 @@ void CheckpointPlugin::onLoad()
 	boolvar("cpt_ignore_freeze_ball", "If set, ignore freeze ball when not frozen", &ignoreFreezeBall);
 	boolvar("cpt_disable_training", "If set, disable in custom training", &disableTraining);
 	boolvar("cpt_disable_workshop", "If set, disable in workshop", &disableWorkshop);
+	boolvar("cpt_show_boost", "If set, show player boost usage while rewinding", &showBoost);
 
 	// Migration from cpt_next_prev_when_frozen to split variables.
 	if (ignorePNNotFrozen) {
@@ -337,7 +338,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 	if (freezeBall) {
 		setFrozen(false, false);
 		latest.car = history.back().car;
-		latest.apply(gameWrapper);
+		latest.apply(gameWrapper, showBoost);
 		quickCheckpoint = latest;
 		hasQuickCheckpoint = true;
 		return;
@@ -346,7 +347,7 @@ void CheckpointPlugin::freezeBallUnfreezeCar(std::vector<std::string> command) {
 		return;
 	}
 	latest = history.back();
-	latest.apply(gameWrapper);
+	latest.apply(gameWrapper, false);
 	setFrozen(false, true);
 }
 
@@ -543,7 +544,7 @@ void CheckpointPlugin::loadGameState(const GameState& state) {
 	if (cvarManager->getCvar("sv_soccar_enablegoal").getBoolValue()) {
 		sw.PlayerResetTraining(); // In case a goal was just scored, there may be no ball.
 	}
-	latest.apply(gameWrapper);
+	latest.apply(gameWrapper, false);
 	rewindState.virtualTimeOffset = 0;
 	rewindState.holdingFor = 0;
 	setFrozen(true, true);
@@ -568,7 +569,7 @@ void CheckpointPlugin::OnPreAsync(std::string funcName)
 
 	if (rewindMode) {
 		if (rewind(sw)) {
-			applyVariance(latest).apply(gameWrapper);
+			applyVariance(latest).apply(gameWrapper, showBoost);
 		}
 	} else {
 		record(sw);

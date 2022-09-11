@@ -96,6 +96,7 @@ private:
 	bool nextInsteadOfReset = false;
 	bool mirrorLoads = false;
 	bool randomizeLoads = false;
+	bool showBoost = false;
 
 	void addBind(std::string key, std::string cmd);
 	void removeBind(std::string key, std::string cmd);

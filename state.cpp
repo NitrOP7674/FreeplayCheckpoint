@@ -108,7 +108,7 @@ CarState::CarState(CarWrapper c) {
 	lastJumped = !c.GetbJumped() || c.GetJumpComponent().IsNull() ? -1 : c.GetJumpComponent().GetInactiveTime();
 	hasDodge = !c.GetbDoubleJumped() && lastJumped < MAX_DODGE_TIME;
 	boostAmount = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetCurrentBoostAmount();
-	boosting = 0; // c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetbActive();
+	boosting = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetbActive();
 }
 // Returns the object state <percent (0-1.0)> way between lh and rh.
 CarState::CarState(CarState lh, CarState rh, float percent) {
@@ -143,7 +143,7 @@ void CarState::write(std::ostream& out) const {
 	writePOD(out, lastJumped);
 }
 
-void CarState::apply(CarWrapper c) const {
+void CarState::apply(CarWrapper c, bool showBoost) const {
 	actorState.apply(c);
 	if (!c.GetBoostComponent().IsNull()) {
 		c.GetBoostComponent().SetCurrentBoostAmount(boostAmount);
@@ -152,7 +152,7 @@ void CarState::apply(CarWrapper c) const {
 	c.SetbJumped(!hasDodge);
 	if (!c.GetBoostComponent().IsNull()) {
 		c.GetBoostComponent().SetActivityTime(0);
-		c.GetBoostComponent().SetActive(boosting);
+		c.GetBoostComponent().SetActive(showBoost && boosting);
 	}
 }
 
@@ -225,7 +225,7 @@ GameState::GameState(const GameState &lh, const GameState &rh, float percent) {
 	}
 }
 
-void GameState::apply(std::shared_ptr<GameWrapper> gw) const {
+void GameState::apply(std::shared_ptr<GameWrapper> gw, bool showBoost) const {
 	ServerWrapper sw = gw->GetGameEventAsServer();
 	if (sw.GetBall().IsNull() || sw.GetGameCar().IsNull()) {
 		return;
@@ -239,7 +239,7 @@ void GameState::apply(std::shared_ptr<GameWrapper> gw) const {
 		}
 	}
 	ball.apply(sw.GetBall());
-	car.apply(sw.GetGameCar());
+	car.apply(sw.GetGameCar(), showBoost);
 }
 
 GameState GameState::mirror() const {

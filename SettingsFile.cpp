@@ -87,6 +87,7 @@ void CheckpointPlugin::writeSettingsFile() {
 7|
 1|Enable Delete ALL Shots Button|cpt_allow_delete_all
 9|
+1|Show player boost while rewinding|cpt_show_boost
 1|Clean History -- Erases future history points when resuming|cpt_clean_history
 5|History Length (seconds)|cpt_history_length|10|120
 5|History Refresh Rate (ms)|cpt_snapshot_interval|1|10

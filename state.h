@@ -42,7 +42,7 @@ public:
 	CarState(std::istream& in);
 
 	void write(std::ostream& out) const;
-	void apply(CarWrapper c) const;
+	void apply(CarWrapper c, bool showBoost) const;
 	CarState mirror() const;
 };
 
@@ -60,7 +60,7 @@ public:
 	GameState(std::string str);
 
 	void write(std::ostream& out) const;
-	void apply(std::shared_ptr<GameWrapper> gw) const;
+	void apply(std::shared_ptr<GameWrapper> gw, bool showBoost) const;
 	const std::string toString() const;
 	GameState mirror() const;
 };
