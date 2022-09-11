@@ -170,6 +170,9 @@ void CheckpointPlugin::onLoad()
 	// Or load latest checkpoint if within N seconds.
 	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState",
 		[this](std::string eventName) {
+			if (!enabledLoads()) {
+				return;
+			}
 			int resetDelay = cvarManager->getCvar("cpt_load_after_reset").getIntValue();
 			if (!rewindMode && playingFromCheckpoint && resetDelay > 0) {
 				ServerWrapper sw = gameWrapper->GetGameEventAsServer();
