@@ -54,6 +54,9 @@ void CheckpointPlugin::writeSettingsFile() {
 9|:(
 1|Disable binds in custom training|cpt_disable_training
 1|Disable binds in workshop|cpt_disable_workshop
+9|
+9|Reset button loads last checkpoint instead of resetting if loaded before
+5|(seconds)|cpt_load_after_reset|0|30
 8|
 9|
 9|Variance - applied when leaving rewind mode

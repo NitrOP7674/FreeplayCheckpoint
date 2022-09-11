@@ -154,6 +154,9 @@ void CheckpointPlugin::onLoad()
 	});
 	snapshotIntervalCV.notify();
 
+	auto resetDelayCV = cvarManager->registerCvar(
+		"cpt_load_after_reset", "0", "Load last checkpoint on reset if loaded within last N seconds", true, true, 0, false, 0, true);
+
 	registerVarianceCVars();
 
 	loadCheckpointFile();
@@ -163,8 +166,18 @@ void CheckpointPlugin::onLoad()
 		bind(&CheckpointPlugin::OnPreAsync, this, _1));
 
 	// Disable rewind mode if the user resets freeplay.
+	// Or load latest checkpoint if within N seconds.
 	gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState",
 		[this](std::string eventName) {
+			int resetDelay = cvarManager->getCvar("cpt_load_after_reset").getIntValue();
+			if (!rewindMode && playingFromCheckpoint && resetDelay > 0) {
+				ServerWrapper sw = gameWrapper->GetGameEventAsServer();
+				float lastLoad = sw.GetSecondsElapsed() - lastRewindTime;
+				if (lastLoad > 0 && lastLoad < resetDelay) {
+					loadLatestCheckpoint();
+					return;
+				}
+			}
 			playingFromCheckpoint = false;
 			setFrozen(false, false);
 			dodgeExpiration = 0.0;
