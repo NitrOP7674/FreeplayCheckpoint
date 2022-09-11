@@ -471,9 +471,9 @@ void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
 		log("adding checkpoint " + std::to_string(checkpoints.size() + 1));
 		curCheckpoint = checkpoints.size();
 		checkpoints.push_back(latest);
-		rewindState.atCheckpoint = true;
-		rewindState.justDeletedCheckpoint = false;
 		saveCheckpointFile();
+		loadGameState(latest);
+		rewindState.atCheckpoint = true;
 	}
 }
 
