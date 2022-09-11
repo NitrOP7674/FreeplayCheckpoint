@@ -99,14 +99,16 @@ CarState::CarState() {
 	boostAmount = 0;
 	hasDodge = false;
 	lastJumped = 0;
+	boosting = 0;
 }
 CarState::CarState(CarWrapper c) {
 	actorState = ActorState(c);
-	boostAmount = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetCurrentBoostAmount();
 	// Save last jump time only if the player jumped.
 	// After applying this, we will remove the player's dodge when the jump timer expires.
 	lastJumped = !c.GetbJumped() || c.GetJumpComponent().IsNull() ? -1 : c.GetJumpComponent().GetInactiveTime();
 	hasDodge = !c.GetbDoubleJumped() && lastJumped < MAX_DODGE_TIME;
+	boostAmount = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetCurrentBoostAmount();
+	boosting = 0; // c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetbActive();
 }
 // Returns the object state <percent (0-1.0)> way between lh and rh.
 CarState::CarState(CarState lh, CarState rh, float percent) {
@@ -123,6 +125,7 @@ CarState::CarState(CarState lh, CarState rh, float percent) {
 		lastJumped = lh.lastJumped * percent + rh.lastJumped * rhPercent;
 		hasDodge = lastJumped < MAX_DODGE_TIME;
 	}
+	boosting = lh.boosting;
 }
 
 CarState::CarState(std::istream& in) {
@@ -130,6 +133,7 @@ CarState::CarState(std::istream& in) {
 	readPOD(in, boostAmount);
 	readPOD(in, hasDodge);
 	readPOD(in, lastJumped);
+	boosting = 0;
 }
 
 void CarState::write(std::ostream& out) const {
@@ -146,6 +150,10 @@ void CarState::apply(CarWrapper c) const {
 	}
 	c.SetbDoubleJumped(!hasDodge);
 	c.SetbJumped(!hasDodge);
+	if (!c.GetBoostComponent().IsNull()) {
+		c.GetBoostComponent().SetActivityTime(0);
+		c.GetBoostComponent().SetActive(boosting);
+	}
 }
 
 CarState CarState::mirror() const {

@@ -34,6 +34,7 @@ public:
 	float boostAmount;
 	bool hasDodge;
 	float lastJumped; // cannot apply; used to reset dodge in record().
+	long boosting;
 
 	CarState();
 	CarState(CarWrapper c);

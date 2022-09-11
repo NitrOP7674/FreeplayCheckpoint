@@ -583,10 +583,11 @@ bool CheckpointPlugin::rewind(ServerWrapper sw) {
 		(ci.ActivateBoost ? 0x10 : 0) |
 		(ci.HoldingBoost ? 0x20 : 0) |
 		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Steer) >= .05 ? 0x40 : 0) |
-		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint) && abs(ci.Pitch) >= .05 ? 0x80 : 0);
+		((rewindState.atCheckpoint || rewindState.justLoadedQuickCheckpoint || abs(ci.Pitch) >= .7) && abs(ci.Pitch) >= .05 ? 0x80 : 0);
 	// See if we should exit rewind mode due to input.
 	if (buttonsDown != 0) {
-		if (buttonsDown > rewindState.buttonsDown && currentTime - lastRecordTime > 0.1f) {
+		if ((buttonsDown > rewindState.buttonsDown && currentTime - lastRecordTime > 0.1f) ||
+			currentTime - lastRecordTime > 0.5f) {
 			log("resuming...");
 			setFrozen(false, false);
 			lastRecordTime = currentTime;
