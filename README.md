@@ -62,6 +62,9 @@ Note: assumes default bindings from above.
     - Avoids interfering with bakkesmod default commands.
   - Disable binds in custom training: ignore commands in custom training
   - Disable binds in workshop: ignore commands on workshop maps
+  - Reset button loads last checkpoint instead of resetting:
+    - If a checkpoint was loaded within the last few seconds (set by this amount),
+      the reset shot button will load that checkpoint instead of resetting training.
 - **Variance**:
   - When resuming play from frozen, apply randomness to the scenario.
   - **Randomly mirror when loading checkpoint**:
@@ -78,6 +81,9 @@ Note: assumes default bindings from above.
     - Deletes every saved checkpoint in the current file, even locked shots.  Check the
       "Enable" checkbox first to enable the button - there is no warning or confirmation
       once this is checked.
+  - **Show player boost while rewinding**:
+    - If set, boost will be shown when rewinding if the player was boosting while recording.
+      Does not affect checkpoints.
   - **Clean History**:
     - When rewinding and restoring an old state, deletes history after that restored point.
   - **History Length**: amount of history to save
