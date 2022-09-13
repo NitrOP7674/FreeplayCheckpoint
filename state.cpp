@@ -110,6 +110,15 @@ CarState::CarState(CarWrapper c) {
 	boostAmount = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetCurrentBoostAmount();
 	boosting = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetbActive();
 }
+CarState::CarState(CarWrapper c, float lastJumpedTime) {
+	actorState = ActorState(c);
+	// Save last jump time only if the player jumped.
+	// After applying this, we will remove the player's dodge when the jump timer expires.
+	lastJumped = lastJumpedTime;
+	hasDodge = !c.GetbDoubleJumped() && lastJumped < MAX_DODGE_TIME;
+	boostAmount = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetCurrentBoostAmount();
+	boosting = c.GetBoostComponent().IsNull() ? 0 : c.GetBoostComponent().GetbActive();
+}
 // Returns the object state <percent (0-1.0)> way between lh and rh.
 CarState::CarState(CarState lh, CarState rh, float percent) {
 	actorState = ActorState(lh.actorState, rh.actorState, percent);
@@ -201,6 +210,17 @@ GameState::GameState(std::shared_ptr<GameWrapper> gw) {
 	ServerWrapper sw = gw->GetGameEventAsServer();
 	ball = ActorState(sw.GetBall());
 	car = CarState(sw.GetGameCar());
+	if (gw->IsInCustomTraining()) {
+		time = gw->GetCurrentGameState().GetGameTimeRemaining();
+	} else {
+		time = -1;
+	}
+}
+
+GameState::GameState(std::shared_ptr<GameWrapper> gw, float lastJumpedTime) {
+	ServerWrapper sw = gw->GetGameEventAsServer();
+	ball = ActorState(sw.GetBall());
+	car = CarState(sw.GetGameCar(), lastJumpedTime);
 	if (gw->IsInCustomTraining()) {
 		time = gw->GetCurrentGameState().GetGameTimeRemaining();
 	} else {

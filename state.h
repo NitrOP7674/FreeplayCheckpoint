@@ -38,6 +38,7 @@ public:
 
 	CarState();
 	CarState(CarWrapper c);
+	CarState(CarWrapper c, float lastJumpedTime);
 	CarState(CarState lh, CarState rh, float percent);
 	CarState(std::istream& in);
 
@@ -54,6 +55,7 @@ public:
 
 	GameState();
 	GameState(std::shared_ptr<GameWrapper> gw);
+	GameState(std::shared_ptr<GameWrapper> gw, float lastJumpedTime);
 	GameState(CarWrapper cw, BallWrapper bw);
 	GameState(const GameState& lh, const GameState& rh, float percent);
 	GameState(std::istream& in);

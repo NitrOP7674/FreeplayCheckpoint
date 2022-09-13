@@ -717,7 +717,11 @@ void CheckpointPlugin::record(ServerWrapper sw)
 	if (history.size() == maxHistory) {
 		history.erase(history.begin());
 	}
-	history.emplace_back(gameWrapper);
+	if (dodgeExpiration == 0) {
+		history.emplace_back(gameWrapper);
+	} else {
+		history.emplace_back(gameWrapper, MAX_DODGE_TIME - currentTime + dodgeExpiration);
+	}
 }
 
 void show(CanvasWrapper canvas, Vector2 *loc, std::string s) {
