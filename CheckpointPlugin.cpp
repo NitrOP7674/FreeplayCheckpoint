@@ -732,7 +732,7 @@ void show(CanvasWrapper canvas, Vector2 *loc, std::string s) {
 }
 
 void CheckpointPlugin::Render(CanvasWrapper canvas) {
-	if (!enabledLoads()) {
+	if (!enabled()) {
 		return;
 	}
 	if (debug) {
