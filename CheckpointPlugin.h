@@ -106,6 +106,7 @@ private:
 	void captureBindKey(std::vector<std::string> params);
 	void removeBindKeys(std::vector<std::string> params);
 	void applyBindKeys(std::vector<std::string> params);
+	void resetDefaultBindKeys(std::vector<std::string> params);
 	GameState applyVariance(GameState& s);
 	bool rewind(ServerWrapper sw);
 	void loadCheckpointFile();

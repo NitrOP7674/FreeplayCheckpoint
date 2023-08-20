@@ -20,10 +20,14 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 	float carDir = random(.0f, cvarManager->getCvar("cpt_variance_car_dir").getFloatValue());
 	float carSpd = cvarManager->getCvar("cpt_variance_car_spd").getFloatValue();
 	carSpd = random(-carSpd, carSpd);
+	float carRot = cvarManager->getCvar("cpt_variance_car_rot").getFloatValue();
+	carRot = random(-carRot, carRot);
 	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
 	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
 	ballSpd = random(-ballSpd, ballSpd);
-	float totVar = abs(carDir) + abs(carSpd) + abs(ballDir) + abs(ballSpd);
+	float ballRot = cvarManager->getCvar("cpt_variance_ball_rot").getFloatValue();
+	ballRot = random(-ballRot, ballRot);
+	float totVar = abs(carDir) + abs(carSpd) + abs(carRot) + abs(ballDir) + abs(ballSpd) + abs(ballRot);
 	if (totVar < 1) {
 		return s;
 	}
@@ -32,17 +36,21 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 		float scale = maxVar / totVar;
 		carDir *= scale;
 		carSpd *= scale;
+		carRot *= scale;
 		ballDir *= scale;
 		ballSpd *= scale;
+		ballRot *= scale;
 	}
 	if (debug) {
 		log("applying variance: ball(" +
-			std::to_string(ballDir) + "," + std::to_string(ballSpd) + "); car(" +
-			std::to_string(carDir) + "," + std::to_string(carSpd) + "); tot: " +
+			std::to_string(ballDir) + "," + std::to_string(ballSpd) + "," + std::to_string(ballRot) + "); car(" +
+			std::to_string(carDir) + "," + std::to_string(carSpd) + "," + std::to_string(carRot) + "); tot: " +
 			std::to_string(totVar));
 	}
 	o.car.actorState.velocity = deflect(o.car.actorState.velocity, carDir, 1 + (carSpd / 100.0f));
+	o.car.actorState.angVelocity = deflect(o.car.actorState.angVelocity, carRot*3, 1 + (carRot/100.0f));
 	o.ball.velocity = deflect(o.ball.velocity, ballDir, 1 + (ballSpd / 100.0f));
+	o.ball.angVelocity= deflect(o.ball.angVelocity, ballRot*3, 1 + (ballRot/100.0f));
 	return o;
 }
 

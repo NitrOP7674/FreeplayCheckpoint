@@ -31,6 +31,15 @@ void CheckpointPlugin::applyBindKeys(std::vector<std::string> params) {
 	addBind(cvarManager->getCvar("cpt_mirror_state_key").getStringValue(), "cpt_mirror_state");
 }
 
+void CheckpointPlugin::resetDefaultBindKeys(std::vector<std::string> params) {
+	cvarManager->getCvar("cpt_freeze_key").setValue("XboxTypeS_RightThumbStick");
+	cvarManager->getCvar("cpt_do_checkpoint_key").setValue("XboxTypeS_Back");
+	cvarManager->getCvar("cpt_prev_checkpoint_key").setValue("XboxTypeS_DPad_Left");
+	cvarManager->getCvar("cpt_next_checkpoint_key").setValue("XboxTypeS_DPad_Right");
+	cvarManager->getCvar("cpt_freeze_ball_key").setValue("XboxTypeS_DPad_Up");
+	cvarManager->getCvar("cpt_mirror_state_key").setValue("XboxTypeS_DPad_Down");
+}
+
 static const std::vector<std::string> KEY_LIST = {
 	"XboxTypeS_A", "XboxTypeS_B", "XboxTypeS_X", "XboxTypeS_Y", "XboxTypeS_RightShoulder", "XboxTypeS_RightTrigger",
 	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
@@ -47,6 +56,8 @@ void CheckpointPlugin::registerBindingCVars() {
 		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
 		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_reset_default_bindings", bind(&CheckpointPlugin::resetDefaultBindKeys, this, _1),
+		"Resets bindings to the default values", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_capture_key", bind(&CheckpointPlugin::captureBindKey, this, _1),
 		"Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
 }
