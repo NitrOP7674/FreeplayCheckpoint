@@ -45,9 +45,6 @@ void CheckpointPlugin::writeSettingsFile() {
 7|
 9| [ Steer Left & Right ]
 9|
-0| Reset Default Bindings |cpt_reset_default_bindings
-7|
-9| (does not apply them)
 0|  Apply All Bindings  |cpt_apply_bindings
 7|
 9|(if bindings have never been set)
@@ -55,6 +52,11 @@ void CheckpointPlugin::writeSettingsFile() {
 0| Remove Bindings  |cpt_remove_bindings
 7|
 9|:(
+9|
+0| Reset Default Bindings |cpt_reset_default_bindings
+7|
+9| (does not apply them)
+9|
 1|Disable binds in custom training|cpt_disable_training
 1|Disable binds in workshop|cpt_disable_workshop
 9|
@@ -66,10 +68,10 @@ void CheckpointPlugin::writeSettingsFile() {
 8|
 5|Car Direction (degrees)|cpt_variance_car_dir|0|30
 5|Car Speed (percent)|cpt_variance_car_spd|0|50
-5|Car Rotation (strength)|cpt_variance_car_rot|0|10
+3|Car Rotation (strength)|cpt_variance_car_rot|0|10
 5|Ball Direction (degrees)|cpt_variance_ball_dir|0|30
 5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
-5|Ball Rotation (strength)|cpt_variance_ball_rot|0|10
+3|Ball Rotation (strength)|cpt_variance_ball_rot|0|10
 5|Max. Total Variance|cpt_variance_tot|0|50
 9|
 1|Randomly mirror when loading checkpoint|cpt_mirror_loads

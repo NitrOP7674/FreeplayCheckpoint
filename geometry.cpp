@@ -22,13 +22,13 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 	float carDir = random(.0f, cvarManager->getCvar("cpt_variance_car_dir").getFloatValue());
 	float carSpd = cvarManager->getCvar("cpt_variance_car_spd").getFloatValue();
 	carSpd = random(-carSpd, carSpd);
-	float carRot = random(0.0f, cvarManager->getCvar("cpt_variance_car_rot").getFloatValue()*10)/10.0f;
+	float carRot = cvarManager->getCvar("cpt_variance_car_rot").getFloatValue();
 	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
 	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
 	ballSpd = random(-ballSpd, ballSpd);
-	float ballRot = random(0.0f, cvarManager->getCvar("cpt_variance_ball_rot").getFloatValue()*10)/10.0f;
+	float ballRot = cvarManager->getCvar("cpt_variance_ball_rot").getFloatValue();
 	float totVar = abs(carDir) + abs(carSpd) + abs(carRot) + abs(ballDir) + abs(ballSpd) + abs(ballRot);
-	if (totVar < 1) {
+	if (totVar < 0.1) {
 		return s;
 	}
 	GameState o(s);
@@ -48,9 +48,9 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 			std::to_string(totVar));
 	}
 	o.car.actorState.velocity = deflect(o.car.actorState.velocity, carDir, 1 + (carSpd / 100.0f));
-	o.car.actorState.angVelocity = avgVec(o.car.actorState.angVelocity, randVec(), carRot);
+	o.car.actorState.angVelocity = avgVec(o.car.actorState.angVelocity, randVec(), carRot/10.0f);
 	o.ball.velocity = deflect(o.ball.velocity, ballDir, 1 + (ballSpd / 100.0f));
-	o.ball.angVelocity = avgVec(o.ball.angVelocity, randVec(), ballRot);
+	o.ball.angVelocity = avgVec(o.ball.angVelocity, randVec(), ballRot/10.0f);
 	return o;
 }
 
@@ -67,13 +67,8 @@ Vector randVec() {
 }
 
 Vector avgVec(Vector a, Vector b, float amount) {
-	float f2 = amount / 10.0f;
-	float f1 = 1 - f2;
-	Vector v;
-	v.X = a.X * f1 + b.X * f2;
-	v.Y = a.Y * f1 + b.Y * f2;
-	v.Z = a.Z * f1 + b.Z * f2;
-	return v;
+	float amt1 = 1 - amount;
+	return (a * amt1) + (b * amount);
 }
 
 Rot VectorToRot(Vector vVector) {
