@@ -66,10 +66,10 @@ void CheckpointPlugin::writeSettingsFile() {
 8|
 5|Car Direction (degrees)|cpt_variance_car_dir|0|30
 5|Car Speed (percent)|cpt_variance_car_spd|0|50
-5|Car Rotation (dir & amt)|cpt_variance_car_rot|0|50
+5|Car Rotation (strength)|cpt_variance_car_rot|0|10
 5|Ball Direction (degrees)|cpt_variance_ball_dir|0|30
 5|Ball Speed (percent)|cpt_variance_ball_spd|0|50
-5|Ball Rotation (dir & amt)|cpt_variance_ball_rot|0|50
+5|Ball Rotation (strength)|cpt_variance_ball_rot|0|10
 5|Max. Total Variance|cpt_variance_tot|0|50
 9|
 1|Randomly mirror when loading checkpoint|cpt_mirror_loads

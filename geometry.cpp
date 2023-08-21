@@ -11,6 +11,8 @@
 #include "utils/parser.h"
 
 Vector deflect(Vector velocity, float dir, float speed);
+Vector randVec();
+Vector avgVec(Vector a, Vector b, float amt);
 
 GameState CheckpointPlugin::applyVariance(GameState& s) {
 	int maxVar = cvarManager->getCvar("cpt_variance_tot").getIntValue();
@@ -20,13 +22,11 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 	float carDir = random(.0f, cvarManager->getCvar("cpt_variance_car_dir").getFloatValue());
 	float carSpd = cvarManager->getCvar("cpt_variance_car_spd").getFloatValue();
 	carSpd = random(-carSpd, carSpd);
-	float carRot = cvarManager->getCvar("cpt_variance_car_rot").getFloatValue();
-	carRot = random(-carRot, carRot);
+	float carRot = random(0.0f, cvarManager->getCvar("cpt_variance_car_rot").getFloatValue()*10)/10.0f;
 	float ballDir = random(.0f, cvarManager->getCvar("cpt_variance_ball_dir").getFloatValue());
 	float ballSpd = cvarManager->getCvar("cpt_variance_ball_spd").getFloatValue();
 	ballSpd = random(-ballSpd, ballSpd);
-	float ballRot = cvarManager->getCvar("cpt_variance_ball_rot").getFloatValue();
-	ballRot = random(-ballRot, ballRot);
+	float ballRot = random(0.0f, cvarManager->getCvar("cpt_variance_ball_rot").getFloatValue()*10)/10.0f;
 	float totVar = abs(carDir) + abs(carSpd) + abs(carRot) + abs(ballDir) + abs(ballSpd) + abs(ballRot);
 	if (totVar < 1) {
 		return s;
@@ -48,10 +48,32 @@ GameState CheckpointPlugin::applyVariance(GameState& s) {
 			std::to_string(totVar));
 	}
 	o.car.actorState.velocity = deflect(o.car.actorState.velocity, carDir, 1 + (carSpd / 100.0f));
-	o.car.actorState.angVelocity = deflect(o.car.actorState.angVelocity, carRot*3, 1 + (carRot/100.0f));
+	o.car.actorState.angVelocity = avgVec(o.car.actorState.angVelocity, randVec(), carRot);
 	o.ball.velocity = deflect(o.ball.velocity, ballDir, 1 + (ballSpd / 100.0f));
-	o.ball.angVelocity= deflect(o.ball.angVelocity, ballRot*3, 1 + (ballRot/100.0f));
+	o.ball.angVelocity = avgVec(o.ball.angVelocity, randVec(), ballRot);
 	return o;
+}
+
+Vector randVec() {
+	Vector v;
+	v.X = random(-1000.0f, 1000.0f);
+	v.Y = random(-1000.0f, 1000.0f);
+	v.Z = random(-1000.0f, 1000.0f);
+	auto m = 6.0f / v.magnitude();
+	v.X *= m;
+	v.Y *= m;
+	v.Z *= m;
+	return v;
+}
+
+Vector avgVec(Vector a, Vector b, float amount) {
+	float f2 = amount / 10.0f;
+	float f1 = 1 - f2;
+	Vector v;
+	v.X = a.X * f1 + b.X * f2;
+	v.Y = a.Y * f1 + b.Y * f2;
+	v.Z = a.Z * f1 + b.Z * f2;
+	return v;
 }
 
 Rot VectorToRot(Vector vVector) {
