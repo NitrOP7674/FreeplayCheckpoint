@@ -1,0 +1,16 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+# visual studio related files
+/.vs/CheckpointPlugin
+/build/.intermediates/Release
+/.cache/clangd/index
+*.aps
+
+# build related files
+/plugins
+
+# personal files
+/.clangd
+/compile_commands.json
