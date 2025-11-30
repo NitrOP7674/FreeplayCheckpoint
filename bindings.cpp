@@ -1,17 +1,20 @@
-/*
+﻿/*
  * Copyright (c) 2021
  * All rights reserved.
  *
  * This source code is licensed under the MIT-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
 #include "pch.h"
 #include "CheckpointPlugin.h"
 #include "utils/parser.h"
 #include <functional>
 
+#include "bindings.h"
+
 using namespace std::placeholders;
+
+KEYBIND_ASSIGNWHICH which_is_being_bound = KEYBIND_ASSIGNWHICH::NONE;
 
 void CheckpointPlugin::removeBindKeys(std::vector<std::string> params) {
 	removeBind(cvarManager->getCvar("cpt_freeze_key").getStringValue(), "cpt_freeze");
@@ -38,12 +41,10 @@ void CheckpointPlugin::resetDefaultBindKeys(std::vector<std::string> params) {
 	cvarManager->getCvar("cpt_next_checkpoint_key").setValue("XboxTypeS_DPad_Right");
 	cvarManager->getCvar("cpt_freeze_ball_key").setValue("XboxTypeS_DPad_Up");
 	cvarManager->getCvar("cpt_mirror_state_key").setValue("XboxTypeS_DPad_Down");
+    cvarManager->getCvar("cpt_freeze_ball_key").setValue("XboxTypeS_DPad_Up");
+    cvarManager->getCvar("cpt_rewind_key").setValue("XboxTypeS_LeftX-");
+    cvarManager->getCvar("cpt_fastforward_key").setValue("XboxTypeS_LeftX+");
 }
-
-static const std::vector<std::string> KEY_LIST = {
-	"XboxTypeS_A", "XboxTypeS_B", "XboxTypeS_X", "XboxTypeS_Y", "XboxTypeS_RightShoulder", "XboxTypeS_RightTrigger",
-	"XboxTypeS_RightThumbStick", "XboxTypeS_LeftShoulder", "XboxTypeS_LeftTrigger", "XboxTypeS_LeftThumbStick", "XboxTypeS_Start",
-	"XboxTypeS_Back", "XboxTypeS_DPad_Up", "XboxTypeS_DPad_Left", "XboxTypeS_DPad_Right", "XboxTypeS_DPad_Down" };
 
 void CheckpointPlugin::registerBindingCVars() {
 	cvarManager->registerCvar("cpt_freeze_key", "XboxTypeS_RightThumbStick", "Key to bind cpt_freeze to on cpt_apply_bindings");
@@ -52,38 +53,14 @@ void CheckpointPlugin::registerBindingCVars() {
 	cvarManager->registerCvar("cpt_next_checkpoint_key", "XboxTypeS_DPad_Right", "Key to bind cpt_next_checkpoint to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_freeze_ball_key", "XboxTypeS_DPad_Up", "Key to bind cpt_freeze_ball to on cpt_apply_bindings");
 	cvarManager->registerCvar("cpt_mirror_state_key", "XboxTypeS_DPad_Down", "Key to bind cpt_mirror_state to on cpt_apply_bindings");
+    cvarManager->registerCvar("cpt_rewind_key", "XboxTypeS_LeftX-", "Key to bind to cpt_rewind on cpt_apply_bindings");
+    cvarManager->registerCvar("cpt_fastforward_key", "XboxTypeS_LeftX+", "Key to bind to cpt_fastforward on cpt_apply_bindings");
 	cvarManager->registerNotifier("cpt_remove_bindings", bind(&CheckpointPlugin::removeBindKeys, this, _1),
 		"Removes the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_apply_bindings", bind(&CheckpointPlugin::applyBindKeys, this, _1),
 		"Applys the configured button bindings for the Freeplay Checkpoint plugin", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_reset_default_bindings", bind(&CheckpointPlugin::resetDefaultBindKeys, this, _1),
 		"Resets bindings to the default values", PERMISSION_ALL);
-	cvarManager->registerNotifier("cpt_capture_key", bind(&CheckpointPlugin::captureBindKey, this, _1),
-		"Captures currently pressed key and stores in parameter (cvar)", PERMISSION_ALL);
-}
-
-
-void CheckpointPlugin::captureBindKey(std::vector<std::string> params) {
-	if (params.size() != 2) {
-		cvarManager->log("cpt_capture_key: error: requires exactly 1 param.");
-		return;
-	}
-	std::string command = params.back();
-	auto cvar = cvarManager->getCvar(command + "_key");
-	if (cvar.IsNull()) {
-		cvarManager->log("cpt_capture_key: error: unknown cvar to capture to.");
-		return;
-	}
-	auto oldKey = cvar.getStringValue();
-	removeBind(oldKey, command);
-	for (auto key : KEY_LIST) {
-		if (gameWrapper->IsKeyPressed(gameWrapper->GetFNameIndexByString(key))) {
-			cvar.setValue(key);
-			log("cpt_capture_key: " + command + " = " + key);
-			break;
-		}
-	}
-	applyBindKeys(std::vector<std::string>());
 }
 
 void CheckpointPlugin::addBind(std::string key, std::string cmd) {
@@ -133,4 +110,75 @@ void CheckpointPlugin::removeBind(std::string key, std::string cmd) {
 	s << cmds.back();
 	log("setting " + key + " to " + s.str());
 	cvarManager->setBind(key, s.str());
+}
+
+ void OnKeyPressed(
+    std::shared_ptr<CVarManagerWrapper> cvarManager,
+    std::shared_ptr<GameWrapper> gameWrapper,
+    ActorWrapper aw,
+    void* params,
+    std::string eventName) {
+    s* p = reinterpret_cast<s*>(params);
+    if (p->t.e != 0) { return; }
+
+    ImGui::CloseCurrentPopup();
+    cvarManager->executeCommand("closemenu checkpointplugin", false);
+    gameWrapper->UnhookEvent("Function TAGame.GameViewportClient_TA.HandleKeyPress");
+    gameWrapper->UnhookEvent("Function TAGame.GameViewportClient_TA.HandleAxisPress");
+    std::string key = gameWrapper->GetFNameByIndex(p->k.i);
+
+    // this is because of mem-access issues ... even though they may still exist
+    gameWrapper->Execute([=, et = p->t.e](GameWrapper* gw) {
+        cvarManager->getCvar(keys_to_cvars.at(which_is_being_bound)).setValue(key);
+        which_is_being_bound = KEYBIND_ASSIGNWHICH::NONE;
+        });
+}
+
+void OnKeyAxisInput(
+    std::shared_ptr<CVarManagerWrapper> cvarManager,
+    std::shared_ptr<GameWrapper> gameWrapper,
+    ActorWrapper aw,
+    void* params,
+    std::string eventName) {
+    s* p = reinterpret_cast<s*>(params);
+
+    // this is done in ways to emulate how the game does it
+    if (std::fabs(p->t.d) <= 0.8) {
+        // commit to a direction, lol
+        return;
+    }
+
+    std::string key = gameWrapper->GetFNameByIndex(p->k.i);
+    if (key.contains("Mouse") && std::abs(p->t.d) < 3) {
+        // a delta of 3 seems to be the threshhold for a mouse axis input
+        return;
+    }
+
+    ImGui::CloseCurrentPopup();
+    cvarManager->executeCommand("closemenu checkpointplugin", false);
+    gameWrapper->UnhookEvent("Function TAGame.GameViewportClient_TA.HandleAxisPress");
+    gameWrapper->UnhookEvent("Function TAGame.GameViewportClient_TA.HandleKeyPress");
+
+    // this is because of mem-access issues ... even though they may still exist
+    gameWrapper->Execute([=, d = p->t.d](GameWrapper* gw) {
+        if (key == "XboxTypeS_LeftTriggerAxis" || key == "XboxTypeS_RightTriggerAxis") {
+            // this doesn't have a positive/negative direction, so it's not 2 inputs in one
+            cvarManager->getCvar(keys_to_cvars.at(which_is_being_bound)).setValue(key);
+        } else {
+            std::string first_set = signbit(d) ? "-" : "+";
+            std::string second_set = signbit(d) ? "+" : "-";
+            switch (which_is_being_bound) {
+            case KEYBIND_ASSIGNWHICH::CPT_REWIND_KEY:
+                cvarManager->getCvar(keys_to_cvars.at(KEYBIND_ASSIGNWHICH::CPT_REWIND_KEY)).setValue(key + first_set);
+                cvarManager->getCvar(keys_to_cvars.at(KEYBIND_ASSIGNWHICH::CPT_FASTFORWARD_KEY)).setValue(key + second_set);
+                break;
+            case KEYBIND_ASSIGNWHICH::CPT_FASTFORWARD_KEY:
+                cvarManager->getCvar(keys_to_cvars.at(KEYBIND_ASSIGNWHICH::CPT_FASTFORWARD_KEY)).setValue(key + first_set);
+                cvarManager->getCvar(keys_to_cvars.at(KEYBIND_ASSIGNWHICH::CPT_REWIND_KEY)).setValue(key + second_set);
+                break;
+            }
+
+        }
+        which_is_being_bound = KEYBIND_ASSIGNWHICH::NONE;
+        });
 }
