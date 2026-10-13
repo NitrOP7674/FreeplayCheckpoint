@@ -8,6 +8,7 @@
 
 #include "pch.h"
 #include "CheckpointPlugin.h"
+#include <filesystem>
 
 void CheckpointPlugin::writeSettingsFile() {
 	std::ofstream setFile(gameWrapper->GetBakkesModPath() / "plugins" / "settings" / "checkpointplugin.set");
@@ -22,6 +23,7 @@ void CheckpointPlugin::writeSettingsFile() {
 0|         Checkpoint (cpt_do_checkpoint)       |cpt_capture_key cpt_do_checkpoint
 7|
 9| [ $cpt_do_checkpoint_key$ ]
+1|Disable delete on checkpoint button (never deletes)|cpt_disable_delete_on_dpad_down
 0|  Prev. Checkpoint (cpt_prev_checkpoint) |cpt_capture_key cpt_prev_checkpoint
 7|
 9| [ $cpt_prev_checkpoint_key$ ]
@@ -85,12 +87,48 @@ void CheckpointPlugin::writeSettingsFile() {
 1|Load next checkpoint instead of resetting|cpt_next_instead_of_reset
 8|
 9|
-9|Other options:
+9|Presets:
 8|
-9|Save File Name:
+)";
+	auto presets = getPresetFiles();
+	std::string presetOptions;
+	for (const auto& filename : presets) {
+		std::filesystem::path path(filename);
+		std::string displayName = path.stem().string();
+		if (!presetOptions.empty()) {presetOptions += "&";}
+		presetOptions += displayName;
+		presetOptions += "@";
+		presetOptions += filename;
+	}
+
+	setFile
+		<< "6|Preset|cpt_filename|"
+		<< presetOptions
+		<< "\n";
+
+setFile << R"(
+9|
+12|New Preset Name|cpt_new_preset_name
+0|Create Preset|cpt_create_preset
+9|
+9|
+0|Clone Current Preset|cpt_clone_preset
+9|
+12|Rename Current Preset|cpt_rename_preset_name
+0|Rename Preset|cpt_rename_preset
+9|
+9|
+0|Import Preset|cpt_import_preset
+9|
+1|Enable Preset Deletion|cpt_allow_delete_preset
+10|cpt_allow_delete_preset
+0|Delete Current Preset|cpt_delete_preset
+11|
+8|
+9|
+9|Other options:
 7|
-12||cpt_filename
-0|Delete ALL Shots (even locked shots; not undo-able!)|cpt_delete_all
+0|Delete ALL Shots In Preset (even locked shots; not undo-able!)|cpt_delete_all
 7|
 1|Enable Delete ALL Shots Button|cpt_allow_delete_all
 9|

@@ -118,11 +118,15 @@ void CheckpointPlugin::onLoad()
 
 	boolvar("cpt_mirror_loads", "If set, randomly mirror when loading checkpoints", &mirrorLoads);
 	boolvar("cpt_randomize_loads", "If set, load a random checkpoint instead of the latest", &randomizeLoads);
+	boolvar("cpt_disable_delete_on_dpad_down", "If set, the checkpoint binding (cpt_do_checkpoint) will not delete checkpoints", &disableDeleteOnDpadDown);
 
 	cvarManager->registerCvar("cpt_allow_delete_all", "0", "Enables the delete all button", false, true, 0, true, 1, false);
 
 	cvarManager->registerCvar("cpt_car_frozen", "0", "Set when the car is frozen; read-only", false, true, 0, true, 1, false);
 	cvarManager->registerCvar("cpt_ball_frozen", "0", "Set when the ball is frozen; read-only", false, true, 0, true, 1, false);
+
+	presetFileDialog.SetTitle("Import Freeplay Checkpoint Preset");
+	presetFileDialog.SetAcceptableFileTypes("data");
 
 	auto snapshotIntervalCV = cvarManager->registerCvar(
 		"cpt_snapshot_interval", "1", "Collect a snapshot every <n> milliseconds; changing deletes history", true, true, 1, true, 10, true);
@@ -146,11 +150,40 @@ void CheckpointPlugin::onLoad()
 	});
 	historyLenCV.notify();
 
+	cvarManager->registerCvar("cpt_new_preset_name", "", "Name for a new Freeplay Checkpoint preset");
+	cvarManager->registerCvar("cpt_rename_preset_name", "", "New name for the active checkpoint preset");
+	cvarManager->registerCvar(
+		"cpt_allow_delete_preset",
+		"0",
+		"Enables the delete preset button",
+		false,true,0,true,1,false);
+
+
 	auto filenameCV = cvarManager->registerCvar(
-		"cpt_filename", static_cast<std::string>(DEFAULT_SAVE_FILE_NAME), "Sets the filename to use for saved checkpoints", true, false, 0, false, 0, true);
-	filenameCV.addOnValueChanged([this](std::string old, CVarWrapper now) {
-		setFrozen(false, false);
+		"cpt_filename",
+		static_cast<std::string>(DEFAULT_SAVE_FILE_NAME),
+		"Active Freeplay Checkpoint preset",
+		true, false, 0, false, 0, true);
+
+	// State should be reset before switching files to avoid user inconvenience.
+	// Quick state is specifically left untouched here so that it can remain global across presets.
+	// The idea being if someone has a shot they want for `air_dribbles.data`, they can freeze switch to that preset
+	// then save it.
+	filenameCV.addOnValueChanged([this](const std::string &old, CVarWrapper now) {
+		const std::string filename = now.getStringValue();
+		const auto presets = getPresetFiles();
+		if (std::find(presets.begin(), presets.end(), filename) == presets.end()) {
+			cvarManager->log("Freeplay Checkpoint: rejected nonexistent preset: " + filename);
+			now.setValue(old);
+			return;
+		}
+		// The current frozen state/quick checkpoint remains global across presets.
+		// It is no longer considered a saved checkpoint in the newly selected preset
+		// setFrozen(false, false);
 		curCheckpoint = 0;
+		rewindState.atCheckpoint = false;
+		rewindState.justDeletedCheckpoint = false;
+		rewindState.deleting = false;
 		loadCheckpointFile();
 	});
 	snapshotIntervalCV.notify();
@@ -159,6 +192,9 @@ void CheckpointPlugin::onLoad()
 		"cpt_load_after_reset", "0", "Load last checkpoint on reset if loaded within last N seconds", true, true, 0, false, 0, true);
 
 	registerVarianceCVars();
+
+	migrateLegacyPresets();
+	ensureDefaultPreset();
 
 	loadCheckpointFile();
 
@@ -217,12 +253,20 @@ void CheckpointPlugin::onLoad()
 	cvarManager->registerNotifier("cpt_freeze_ball", std::bind(&CheckpointPlugin::freezeBallUnfreezeCar, this, _1), "Freezes/unfreezes the ball", PERMISSION_FREEPLAY);
 	cvarManager->registerNotifier("cpt_copy", std::bind(&CheckpointPlugin::copyShot, this, _1), "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_paste", std::bind(&CheckpointPlugin::pasteShot, this, _1), "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
+	cvarManager->registerNotifier("cpt_create_preset", std::bind(&CheckpointPlugin::createPreset, this, _1),"Creates a new checkpoint preset", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_clone_preset", std::bind(&CheckpointPlugin::clonePreset, this, _1), "Clones the active checkpoint preset", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_rename_preset",std::bind(&CheckpointPlugin::renamePreset, this, _1),"Renames the active checkpoint preset",PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_delete_preset",std::bind(&CheckpointPlugin::deletePreset, this, _1),"Deletes the active checkpoint preset",PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_import_preset",std::bind(&CheckpointPlugin::importPreset, this, _1),"Imports a checkpoint preset",PERMISSION_ALL);
 
 	// Add default bindings.
 	registerBindingCVars();
 
 	// Draw the checkpoint or notification about checkpoint deletion.
-	gameWrapper->RegisterDrawable(std::bind(&CheckpointPlugin::Render, this, std::placeholders::_1));
+	gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) {
+		Render(canvas);
+	}
+);
 
 	writeSettingsFile();
 }
@@ -464,6 +508,12 @@ void CheckpointPlugin::doCheckpoint(std::vector<std::string> command) {
 		}
 		hasQuickCheckpoint = false;
 		if (rewindState.atCheckpoint) { // Delete the current checkpoint we are at.
+			if (disableDeleteOnDpadDown) {
+				// Deleting via the checkpoint binding (cpt_do_checkpoint) is disabled.
+				rewindState.deleting = false;
+				log("at cpt; delete disabled by cpt_disable_delete_on_dpad_down");
+				return;
+			}
 			if (locks.size() > curCheckpoint && locks[curCheckpoint]) {
 				log("at cpt but locked: " + std::to_string(curCheckpoint + 1));
 				return;
@@ -794,37 +844,63 @@ void CheckpointPlugin::Render(CanvasWrapper canvas) {
 	}
 }
 
-// Prevent loading an unknown version's save file.
-constexpr uint32_t SAVE_FILE_VERSION = 1;
-
 void CheckpointPlugin::loadCheckpointFile() {
 	checkpoints.clear();
 	locks.clear();
-	std::ifstream in(gameWrapper->GetDataFolder() / cvarManager->getCvar("cpt_filename").getStringValue(), std::ios::binary);
-	uint32_t version;
-	readPOD(in, version);
-	if (version != SAVE_FILE_VERSION) {
-		in.close();
-		log("could not load save file with version " + std::to_string(version));
+	auto path = getCurrentPresetPath();
+	std::error_code ec;
+	const bool exists = std::filesystem::exists(path, ec);
+	if (ec) {
+		cvarManager->log("Freeplay Checkpoint: could not check preset file: " + path.string());
 		return;
 	}
-	int32_t numSaves;
+	if (!exists) {
+		// This condition would indicate a new checkpoint file.
+		// Since this is a new file, there is no need to load any checkpoints or locks.
+		return;
+	}
+	if (!isValidPresetFile(path)) {
+		cvarManager->log("Freeplay Checkpoint: preset file is invalid: " + path.string());
+		return;
+	}
+	std::ifstream in(path, std::ios::binary);
+	if (!in.is_open()) {
+		return;
+	}
+	uint32_t version = 0;
+	readPOD(in, version);
+
+	if (version != SAVE_FILE_VERSION) {
+		in.close();
+		log("could not load save file with version "+ std::to_string(version));
+		return;
+	}
+
+	int32_t numSaves = 0;
 	readPOD(in, numSaves);
+
 	for (int32_t i = 0; i < numSaves; i++) {
 		checkpoints.emplace_back(in);
 	}
-	int32_t numLocks = 0; // older save files did not have this data; initialize to 0.
+
+	int32_t numLocks = 0;
 	readPOD(in, numLocks);
+
 	for (int32_t i = 0; i < numLocks; i++) {
 		bool locked;
 		readPOD(in, locked);
 		locks.push_back(locked);
 	}
+
 	in.close();
 }
 
 void CheckpointPlugin::saveCheckpointFile() {
-	std::ofstream out(gameWrapper->GetDataFolder() / cvarManager->getCvar("cpt_filename").getStringValue(), std::ios::binary | std::ios::out | std::ios::trunc);
+	std::ofstream out(getCurrentPresetPath(), std::ios::binary | std::ios::out | std::ios::trunc);
+	if (!out.is_open()) {
+		cvarManager->log("Freeplay Checkpoint: could not open preset file for writing");
+		return;
+	}
 	auto ver = SAVE_FILE_VERSION;
 	writePOD(out, ver);
 	auto size = int32_t(checkpoints.size());

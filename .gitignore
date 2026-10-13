@@ -1,0 +1,7 @@
+/.idea
+/.vs
+/build
+/plugins
+/cmake-build-debug
+/cmake-build-release
+CMakeLists.txt

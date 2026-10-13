@@ -36,6 +36,7 @@ Note: assumes default bindings from above.
   - In rewind mode, at a saved checkpoint: deletes the current checkpoint (press twice)
   - While playing: loads the latest checkpoint
   - In a replay, saves the currently selected car & ball as a checkpoint
+  - If **Disable delete on checkpoint button** is checked, this command never deletes checkpoints
 - `cpt_prev_checkpoint` / `cpt_next_checkpoint`: loads the previous/next saved checkpoint
 - `cpt_rand_checkpoint`: loads a random saved checkpoint
 - `cpt_lock_checkpoint`: locks/unlocks the current checkpoint to prevent/allow its deletion.
@@ -58,6 +59,10 @@ Note: assumes default bindings from above.
   - Controller players may hold the button they wish to bind and click the action they
     wish to bind to that button.
   - Recommended: Do *not* bind cpt_checkpoint to the same button as "reset shot".
+  - Disable delete on checkpoint button (default off):
+    - When checked, the checkpoint binding (`cpt_do_checkpoint`; commonly D-pad down)
+      will not delete a frozen checkpoint. Saving and loading checkpoints still work.
+    - Unchecked (default) keeps the existing press-twice-to-delete behavior.
   - Ignore prev/next/freeze ball when not frozen (recommended):
     - Avoids interfering with bakkesmod default commands.
   - Disable binds in custom training: ignore commands in custom training
@@ -74,9 +79,17 @@ Note: assumes default bindings from above.
       of the latest one.
 - **Auto-reset checkpoint**:
   - Allows drilling a shot or running through shots like a training pack.
+- **Presets**:
+  - Presets allow you to keep separate checkpoints for different types of training.
+  - Use the Preset dropdown to switch between presets.
+  - Create, rename, and delete presets from the plugin settings.
+  - You can also import other preset files from plugin settings.
+  - Quick checkpoints (*freezes*) are global and remain available when switching presets. 
+    - This allows you to switch to another preset and save the shot there.
+  - Imported presets are copied into the plugin's preset directory and will not overwrite an existing preset with the same name.
+  - The default and currently selected Freeplay Checkpoint save files are automatically migrated to the preset system.
+  - Since one preset must always exist, if there is only one preset you will not be able to delete it unless you make or import another one.
 - **Other Options**:
-  - **Save File Name**:
-    - Sets the checkpoint save file; store different types of shots in different files.
   - **Delete ALL Shots**:
     - Deletes every saved checkpoint in the current file, even locked shots.  Check the
       "Enable" checkbox first to enable the button - there is no warning or confirmation
