@@ -254,6 +254,7 @@ void CheckpointPlugin::onLoad()
 	cvarManager->registerNotifier("cpt_copy", std::bind(&CheckpointPlugin::copyShot, this, _1), "Copies the frozen state / quick checkpoint / last checkpoint to the clipboard", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_paste", std::bind(&CheckpointPlugin::pasteShot, this, _1), "Loads a checkpoint from the clipboard as a quick checkpoint", PERMISSION_FREEPLAY);
 	cvarManager->registerNotifier("cpt_create_preset", std::bind(&CheckpointPlugin::createPreset, this, _1),"Creates a new checkpoint preset", PERMISSION_ALL);
+	cvarManager->registerNotifier("cpt_clone_preset", std::bind(&CheckpointPlugin::clonePreset, this, _1), "Clones the active checkpoint preset", PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_rename_preset",std::bind(&CheckpointPlugin::renamePreset, this, _1),"Renames the active checkpoint preset",PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_delete_preset",std::bind(&CheckpointPlugin::deletePreset, this, _1),"Deletes the active checkpoint preset",PERMISSION_ALL);
 	cvarManager->registerNotifier("cpt_import_preset",std::bind(&CheckpointPlugin::importPreset, this, _1),"Imports a checkpoint preset",PERMISSION_ALL);

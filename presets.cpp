@@ -762,3 +762,47 @@ void CheckpointPlugin::ensureDefaultPreset() {
 
 	cvarManager->getCvar("cpt_filename").setValue(DEFAULT_PRESET_FILE_NAME);
 }
+
+void CheckpointPlugin::clonePreset(
+	std::vector<std::string> command
+) {
+	const auto sourcePath = getCurrentPresetPath();
+	if (!isValidPresetFile(sourcePath)) {
+		cvarManager->log("Freeplay Checkpoint: current preset cannot be cloned because its file is invalid");
+		return;
+	}
+	std::string sourceStem = sourcePath.stem().string();
+
+	// Leave room for "_copy", numeric suffixes, and the extension.
+	if (sourceStem.size() > MAX_PRESET_NAME_LENGTH - 32) {
+		sourceStem.resize(MAX_PRESET_NAME_LENGTH - 32);
+	}
+
+	std::string filename = sanitizePresetName(sourceStem + "_copy");
+	auto destinationPath = getPresetPath(filename);
+	std::error_code ec;
+	int suffix = 2;
+	while (true) {
+		ec.clear();
+		const bool exists = std::filesystem::exists(destinationPath, ec);
+		if (ec) {
+			cvarManager->log("Freeplay Checkpoint: could not check clone destination: " + ec.message());
+			return;
+		}
+		if (!exists) {
+			break;
+		}
+		filename = sanitizePresetName(sourceStem + "_copy_" + std::to_string(suffix++));
+		destinationPath = getPresetPath(filename);
+	}
+	ec.clear();
+	std::filesystem::copy_file(sourcePath, destinationPath, std::filesystem::copy_options::none,ec);
+	if (ec) {
+		cvarManager->log("Freeplay Checkpoint: could not clone preset: " + ec.message());
+		return;
+	}
+	// The clone now exists, so it is safe for the filename callback to load it.
+	cvarManager->getCvar("cpt_filename").setValue(filename);
+	writeSettingsFile();
+	cvarManager->log("Freeplay Checkpoint: cloned preset as " + filename);
+}

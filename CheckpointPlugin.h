@@ -143,6 +143,7 @@ private:
 	std::string sanitizePresetName(const std::string& rawName);
 
 	void createPreset(std::vector<std::string> command);
+	void clonePreset(std::vector<std::string> command);
 	void renamePreset(std::vector<std::string> command);
 	void deletePreset(std::vector<std::string> command);
 	void importPreset(std::vector<std::string> command);

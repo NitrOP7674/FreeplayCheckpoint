@@ -111,6 +111,9 @@ setFile << R"(
 12|New Preset Name|cpt_new_preset_name
 0|Create Preset|cpt_create_preset
 9|
+9|
+0|Clone Current Preset|cpt_clone_preset
+9|
 12|Rename Current Preset|cpt_rename_preset_name
 0|Rename Preset|cpt_rename_preset
 9|
